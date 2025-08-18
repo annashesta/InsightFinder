@@ -10,7 +10,7 @@
 insightfinder/
 │
 ├── data/                       # Папка с тестовыми и примерами CSV-файлов
-│   └── sample_data.csv
+│   └── test_data.csv
 │
 ├── tools/                      # Библиотека аналитических инструментов
 │   ├── __init__.py
