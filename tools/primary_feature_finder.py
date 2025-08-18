@@ -13,21 +13,44 @@ def primary_feature_finder(df: pd.DataFrame, target_column: str, **kwargs) -> Di
     tool_name = "PrimaryFeatureFinder"
     try:
         if target_column not in df.columns:
-            return {"tool_name": tool_name, "status": "error", "summary": "", "details": {}, "error_message": f"target_column '{target_column}' not found"}
+            return {
+                "tool_name": tool_name,
+                "status": "error",
+                "summary": "",
+                "details": {},
+                "error_message": f"target_column '{target_column}' not found"
+            }
 
         X = df.drop(columns=[target_column])
         y = df[target_column]
 
         if X.shape[1] == 0:
-            return {"tool_name": tool_name, "status": "error", "summary": "", "details": {}, "error_message": "Dataset has only target column"}
+            return {
+                "tool_name": tool_name,
+                "status": "error",
+                "summary": "",
+                "details": {},
+                "error_message": "Dataset has only target column"
+            }
 
-        # Encode target
+        # Кодируем целевую переменную
         if y.dtype.kind not in "biufc":
             y = LabelEncoder().fit_transform(y.astype(str))
         else:
             y = y.astype(int).values
 
-        # Encode features
+        # ✅ КРИТИЧЕСКАЯ ПРОВЕРКА: целевая переменная должна быть бинарной
+        unique_classes = np.unique(y)
+        if len(unique_classes) != 2:
+            return {
+                "tool_name": tool_name,
+                "status": "error",
+                "summary": "",
+                "details": {},
+                "error_message": f"Target column must be binary. Found {len(unique_classes)} classes: {unique_classes.tolist()}"
+            }
+
+        # Кодируем признаки
         X_proc = X.copy()
         for col in X_proc.columns:
             if X_proc[col].dtype.kind not in "biufc":
@@ -35,12 +58,19 @@ def primary_feature_finder(df: pd.DataFrame, target_column: str, **kwargs) -> Di
             else:
                 X_proc[col] = X_proc[col].fillna(X_proc[col].median())
 
+        # Обучаем дерево
         clf = DecisionTreeClassifier(max_depth=1, random_state=42)
         clf.fit(X_proc.values, y)
 
         feature_idx = int(clf.tree_.feature[0])
         if feature_idx == -2:
-            return {"tool_name": tool_name, "status": "error", "summary": "", "details": {}, "error_message": "Decision tree did not split"}
+            return {
+                "tool_name": tool_name,
+                "status": "error",
+                "summary": "",
+                "details": {},
+                "error_message": "Decision tree did not split"
+            }
 
         feature_name = X_proc.columns[feature_idx]
         threshold = float(clf.tree_.threshold[0])
@@ -54,12 +84,30 @@ def primary_feature_finder(df: pd.DataFrame, target_column: str, **kwargs) -> Di
         weighted_child_impurity = (left_impurity * n_left + right_impurity * n_right) / n_total
         information_gain = parent_impurity - weighted_child_impurity
 
-        summary = f"Признак '{feature_name}' выбран деревом как главный. Порог={threshold:.4f}, Information Gain={information_gain:.4f}"
+        summary = (
+            f"Признак '{feature_name}' выбран деревом как главный. "
+            f"Порог={threshold:.4f}, Information Gain={information_gain:.4f}"
+        )
 
-        return {"tool_name": tool_name, "status": "success", "summary": summary,
-                "details": {"best_feature": feature_name, "split_threshold": threshold,
-                            "information_gain": information_gain, "n_left": int(n_left), "n_right": int(n_right)},
-                "error_message": None}
+        return {
+            "tool_name": tool_name,
+            "status": "success",
+            "summary": summary,
+            "details": {
+                "best_feature": feature_name,
+                "split_threshold": threshold,
+                "information_gain": information_gain,
+                "n_left": int(n_left),
+                "n_right": int(n_right)
+            },
+            "error_message": None
+        }
 
     except Exception as e:
-        return {"tool_name": tool_name, "status": "error", "summary": "", "details": {}, "error_message": str(e)}
+        return {
+            "tool_name": tool_name,
+            "status": "error",
+            "summary": "",
+            "details": {},
+            "error_message": str(e)
+        }

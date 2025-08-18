@@ -1,7 +1,7 @@
 # tools/full_model_importance.py
 
-
 import pandas as pd
+import numpy as  np
 from typing import Dict, Any
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
@@ -17,11 +17,25 @@ def full_model_importance(df: pd.DataFrame, target_column: str, top_k: int = 10,
 
         X = df.drop(columns=[target_column])
         y = df[target_column]
-
+        
+        # Кодируем целевую
         if y.dtype.kind not in "biufc":
             y = LabelEncoder().fit_transform(y.astype(str))
         else:
             y = y.astype(int).values
+
+
+        # Проверка
+        if len(np.unique(y)) != 2:
+            return {
+                "tool_name": tool_name,
+                "status": "error",
+                "summary": "",
+                "details": {},
+                "error_message": f"Target column must be binary. Found {len(np.unique(y))} classes: {np.unique(y).tolist()}"
+            }
+
+        # Кодируем категориальные признаки
 
         X_proc = X.copy()
         for col in X_proc.columns:

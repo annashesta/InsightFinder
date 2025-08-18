@@ -24,7 +24,8 @@ insightfinder/
 │   ├── __init__.py
 │   ├── analyst_agent.py
 │   ├── executor_agent.py
-│   └── summarizer_agent.py
+│   ├── summarizer_agent.py
+│   └── tools_wrapper.py  # Обёртка для тулзов
 │
 ├── core/                       # Ядро системы
 │   ├── data_loader.py
@@ -88,3 +89,78 @@ insightfinder/
 
 3. **Обработка ошибок**:
    - Все инструменты возвращаают `status: "error"` и `error_message` при исключениях.
+
+
+## Запуск тестов**
+
+Выполните в терминале:
+
+```bash
+pytest tests/test_tools.py -v -s
+```
+
+Создана мультиагентная система, где:
+
+1. Аналитик планирует, какой инструмент запустить.
+2. Исполнитель вызывает вашу функцию-тулз.
+3. Система координирует их диалог.
+4. Summarizer в конце генерирует отчёт.
+
+
+
+
+---
+
+Надеюсь, не пригодится.
+
+# Установка зависимостей:
+Если по API используй
+```
+pip install langchain langchain-openai python-dotenv
+```
+Создай файл .env в корне проекта:
+```
+# .env
+OPENAI_API_KEY=
+OPENAI_BASE_URL=
+```
+
+
+Если Ollama
+pip install langchain  langchain-ollama python-dotenv
+
+Нужно будет изменить:
+1.  agents/analyst.py и agents/summarizer.py
+```
+from langchain_ollama import ChatOllama  # ← вместо ChatOpenAI
+```
+
+2. agents/summarizer.py
+from langchain_ollama import ChatOllama
+
+```
+def generate_summary(results: str, filename: str = "unknown.csv") -> str:
+    prompt = ChatPromptTemplate.from_template(SUMMARIZER_PROMPT)
+    llm = ChatOllama(model="llama3", temperature=0.3)
+    chain = prompt | llm
+    response = chain.invoke({"results": results, "filename": filename})
+    return response.content
+```
+
+
+3. agents/executor.py тоже замени LLM
+```
+# agents/executor.py
+from langchain.agents import AgentExecutor, create_openai_tools_agent
+from langchain_ollama import ChatOllama  # ← здесь
+
+def create_executor_agent(tools, analyst_prompt, analyst_llm):
+    # Создаём агент с тулзами
+    agent = create_openai_tools_agent(
+        llm=ChatOllama(model="llama3", temperature=0),  # ← вместо ChatOpenAI
+        tools=tools,
+        prompt=analyst_prompt
+    )
+    return AgentExecutor(agent=agent, tools=tools, verbose=True)
+
+```
