@@ -9,18 +9,17 @@
 #   - Пример логики:  
 #     *"Сначала запусти PrimaryFeatureFinder, чтобы найти главный признак. Затем CorrelationAnalysis, чтобы понять линейные связи. После — CategoricalFeatureAnalysis для категориальных данных."    
 
-
-from langchain_core.prompts import ChatPromptTemplate
+# agents/analyst_agent.py
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_openai import ChatOpenAI
 from dotenv import load_dotenv
 import os
 
-# Загружаем переменные из .env
+# Загружаем переменные окружения
 load_dotenv()
 
-# Промпт для аналитика: планирует, какой инструмент запустить
-ANALYST_SYSTEM_PROMPT = """
-Ты — опытный аналитик данных. Твоя задача — исследовать различия между двумя группами по бинарной целевой переменной.
+# Промпт для Аналитика
+ANALYST_SYSTEM_PROMPT = """Ты — опытный аналитик данных. Твоя задача — исследовать различия между двумя группами по бинарной целевой переменной.
 Ты НЕ можешь писать код. Ты можешь только выбирать, какой из доступных инструментов запустить, чтобы получить инсайт.
 
 Доступные инструменты:
@@ -38,18 +37,18 @@ ANALYST_SYSTEM_PROMPT = """
 
 def create_analyst_agent(tools):
     """
-    Создаёт LLM для Analyst'а с настройкой на ваш API.
+    Создаёт промпт и LLM для Analyst'а.
+    Важно: промпт должен включать MessagesPlaceholder для {agent_scratchpad}
     """
     prompt = ChatPromptTemplate.from_messages([
-        ("system", ANALYST_SYSTEM_PROMPT.format(
-            tools="\n".join([f"- {t.name}: {t.description}" for t in tools])
-        )),
-        ("placeholder", "{messages}")
+        ("system", ANALYST_SYSTEM_PROMPT.format(tools="\n".join([f"- {t.name}: {t.description}" for t in tools]))),
+        ("placeholder", "{messages}"),  # Здесь будут user и assistant сообщения
+        MessagesPlaceholder(variable_name="agent_scratchpad")  # Критически важно!
     ])
     llm = ChatOpenAI(
         model="qwen2.5-32b-instruct",
-        api_key=os.getenv("OPENAI_API_KEY"),           # ← из .env
-        base_url=os.getenv("OPENAI_BASE_URL"),         # ← из .env
+        api_key=os.getenv("OPENAI_API_KEY"),
+        base_url=os.getenv("OPENAI_BASE_URL"),
         temperature=0.3,
         max_tokens=4096
     )
