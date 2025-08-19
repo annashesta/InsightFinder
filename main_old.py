@@ -1,4 +1,8 @@
 # main.py
+# С нашим API не работает (( ,
+# Можно использовать ollama, но тогда нужно во всех файлах директории agents скорректировать импорт и модель на ollama.
+
+
 import os
 import pandas as pd
 from dotenv import load_dotenv

@@ -5,87 +5,30 @@
 # а Исполнитель вызывает соответствующую функцию. 
 # Это обеспечивает полный контроль над процессом и гарантирует работу системы."
 
-import pandas as pd
+
+from core.data_loader import load_data
+from core.orchestrator import run_analysis_pipeline
+from report.generate_report import generate_report
 from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate
-from agents.tools_wrapper import set_current_data, ALL_TOOLS
-from agents.summarizer_agent import generate_summary
 import os
 
 load_dotenv()
 
-# Загрузка данных
-df = pd.read_csv("data/telecom_eda_data.csv")
-set_current_data(df, "Churn")
+def main(data_path: str, target_column: str, output_report: str = "report.md"):
+    # 1. Загрузка данных
+    df = load_data(data_path)
+    print(f"✅ Загружено: {df.shape[0]} строк, {df.shape[1]} столбцов")
 
-# LLM
-llm = ChatOpenAI(
-    model="qwen2.5-32b-instruct",
-    api_key=os.getenv("OPENAI_API_KEY"),
-    base_url=os.getenv("OPENAI_BASE_URL"),
-    temperature=0.0
-)
+    # 2. Запуск анализа
+    results = run_analysis_pipeline(df, target_column)
 
-# Промпт для Аналитика
-prompt = ChatPromptTemplate.from_messages([
-    ("system", """
-Ты — аналитик. У тебя есть доступ к следующим инструментам:
-{tool_names}
+    # 3. Генерация отчёта
+    report = generate_report(results, filename=data_path.split("/")[-1])
 
-План:
-1. Запусти PrimaryFeatureFinder
-2. Затем CorrelationAnalysis и DescriptiveStatsComparator
-3. Затем CategoricalFeatureAnalysis
-4. В конце — FullModelFeatureImportance
+    # 4. Сохранение
+    with open(output_report, "w", encoding="utf-8") as f:
+        f.write(report)
+    print(f"✅ Отчёт сохранён: {output_report}")
 
-После каждого шага я буду сообщать тебе результат.
-Когда все инструменты запущены, скажи: "Передаю результаты Summarizer".
-"""),
-    ("placeholder", "{messages}")
-])
-
-# Словарь: имя тулза → функция
-tool_map = {tool.name: tool._run for tool in ALL_TOOLS}
-tool_names = ", ".join(tool_map.keys())
-
-# История диалога
-messages = [{"role": "user", "content": f"Начни анализ. Доступные инструменты: {tool_names}"}]
-
-# Цикл анализа
-results = []
-for _ in range(6):  # Максимум 6 шагов
-    chain = prompt | llm
-    response = chain.invoke({"tool_names": tool_names, "messages": messages})
-    msg = response.content.strip()
-    print(f"🧠 Аналитик: {msg}")
-
-    # Если хочет передать отчёт
-    if "summarizer" in msg.lower() or "все инструменты" in msg.lower():
-        break
-
-    # Поиск, какой тулз нужно запустить
-    chosen_tool = None
-    for name in tool_map:
-        if name in msg:
-            chosen_tool = name
-            break
-
-    if chosen_tool:
-        print(f"🔧 Запуск: {chosen_tool}")
-        result = tool_map[chosen_tool]()
-        results.append(f"### {chosen_tool}\n{result}")
-        messages.append({"role": "assistant", "content": msg})
-        messages.append({"role": "user", "content": f"Результат выполнения {chosen_tool}:\n{result}"})
-    else:
-        messages.append({"role": "assistant", "content": msg})
-        messages.append({"role": "user", "content": "Не удалось определить, какой инструмент запустить. Уточни."})
-
-# Генерация отчёта
-full_results = "\n\n".join(results)
-summary = generate_summary(full_results, "telecom_eda_data.csv")
-
-with open("report.md", "w", encoding="utf-8") as f:
-    f.write(summary)
-
-print("✅ Отчёт сгенерирован: report.md")
+if __name__ == "__main__":
+    main("data/telecom_eda_data.csv", "Churn")

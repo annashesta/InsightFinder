@@ -10,7 +10,7 @@
 insightfinder/
 │
 ├── data/                       # Папка с тестовыми и примерами CSV-файлов
-│   └── test_data.csv
+│   └── telecom_eda_data.csv
 │
 ├── tools/                      # Библиотека аналитических инструментов
 │   ├── __init__.py
@@ -36,17 +36,20 @@ insightfinder/
 │   │   └── report_template.md.j2
 │   └── generate_report.py
 │
-├── tests/                      # Юнит-тесты
-│   ├── test_tools.py
-│   └── test_agents.py
-│
 ├── config/                     # Конфигурация
 │   └── agent_prompts.py
+│
+├── tests/                      # Юнит-тесты
+│   ├── test_tools.py
+│   └── test_edge_cases.py
 │
 ├── main.py                     # Точка входа
 ├── requirements.txt
 └── README.md                   # Документация
+
 ```
+
+
 
 
 
@@ -110,7 +113,29 @@ pytest tests/test_tools.py -v -s
 4. Summarizer в конце генерирует отчёт.
 
 
+# InsightFinder — Аналитическая мультиагентная система
 
+## Описание
+Система автоматически проводит EDA для табличных данных с бинарной целевой переменной и генерирует отчёт в формате Markdown.
+
+## Технологии
+- Python 3.9+
+- LangChain
+- qwen2.5-32b-instruct (через NeuralDeep)
+- pandas, scikit-learn, scipy
+
+## Запуск
+1. Установите зависимости: `pip install -r requirements.txt`
+2. Создайте `.env` с `OPENAI_API_KEY` и `OPENAI_BASE_URL`
+3. Запустите: `python main.py`
+
+## Структура
+- `tools/` — аналитические инструменты
+- `agents/` — агенты на LangChain
+- `core/` — ядро системы
+- `report/` — генерация отчёта
+- `main.py` — точка входа
+- `report.md` — итоговый отчёт
 
 ---
 
