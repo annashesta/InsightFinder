@@ -8,31 +8,30 @@
 #   - Настройка: `allow_code_execution=True`, `code_execution_config`.
 
 
-
-from langchain.agents import AgentExecutor, create_openai_tools_agent
+# agents/executor_agent.py
+from langchain.agents import AgentExecutor
 from langchain_openai import ChatOpenAI
-from dotenv import load_dotenv
-import os
-
-# Загружаем переменные из .env
-load_dotenv()
+from langchain import hub
+from langchain.agents import create_tool_calling_agent
 
 
 def create_executor_agent(tools, analyst_prompt, analyst_llm):
     """
-    Создаёт исполнительного агента, который вызывает тулзы.
-    Использует create_openai_tools_agent, но работает с любым OpenAI-совместимым API.
+    Используем create_tool_calling_agent — более современный и надёжный способ
     """
-    # Создаём агент с вашей моделью и промптом
-    agent = create_openai_tools_agent(
-        llm=ChatOpenAI(
-            model="qwen2.5-32b-instruct",
-            api_key=os.getenv("OPENAI_API_KEY"),           # ← из .env
-            base_url=os.getenv("OPENAI_BASE_URL"),         # ← из .env
-            temperature=0.0  # Низкая температура для точности
-        ),
+    # Создаём агент с явной поддержкой вызова тулзов
+    agent = create_tool_calling_agent(
+        llm=analyst_llm,
         tools=tools,
         prompt=analyst_prompt
     )
-    # Возвращаем исполнителя
-    return AgentExecutor(agent=agent, tools=tools, verbose=True, handle_parsing_errors=True)
+
+    return AgentExecutor(
+        agent=agent,
+        tools=tools,
+        verbose=True,
+        handle_parsing_errors=True,
+        max_iterations=15
+    )
+    
+    
