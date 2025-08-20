@@ -1,11 +1,11 @@
 # tools/descriptive_stats_comparator.py
 import pandas as pd
-from typing import Dict, Any
+from typing import Dict, Any, List
 from sklearn.preprocessing import LabelEncoder
 
 
 def descriptive_stats_comparator(
-    df: pd.DataFrame, target_column: str, threshold_ratio: float = 0.2, **kwargs
+    df: pd.DataFrame, target_column: str, threshold_ratio: float = 0.2, top_k: int = 10, **kwargs
 ) -> Dict[str, Any]:
     """
     Сравнивает mean, median, std, min, max по группам (0 и 1).
@@ -14,6 +14,7 @@ def descriptive_stats_comparator(
         df: Входной DataFrame.
         target_column: Имя бинарной целевой переменной.
         threshold_ratio: Порог относительного различия (по умолчанию 0.2).
+        top_k: Количество топ различий для возврата.
         **kwargs: Дополнительные параметры.
 
     Returns:
@@ -64,7 +65,7 @@ def descriptive_stats_comparator(
                 "error_message": "Target not binary",
             }
 
-        diffs = {}
+        diffs: List[Dict[str, Any]] = []
         for col in X_num.columns[:-1]:
             for stat in ["mean", "median", "std", "min", "max"]:
                 val_0 = stats_0[f"{col}_{stat}"]
@@ -73,18 +74,23 @@ def descriptive_stats_comparator(
                     continue
                 rel_diff = abs(val_1 - val_0) / (max(abs(val_0), abs(val_1)) + 1e-8)
                 if rel_diff > threshold_ratio:
-                    diffs[f"{col}_{stat}"] = {
+                    diffs.append({
+                        "feature_stat": f"{col}_{stat}",
                         "group_0": float(val_0),
                         "group_1": float(val_1),
                         "relative_difference": float(rel_diff),
-                    }
+                    })
 
-        if not diffs:
+        # Сортировка по относительной разнице
+        diffs.sort(key=lambda x: x['relative_difference'], reverse=True)
+        top_diffs = diffs[:top_k]
+
+        if not top_diffs:
             summary = f"Нет значимых различий > {threshold_ratio*100:.0f}%"
         else:
-            top = next(iter(diffs))
-            feature, stat = top.split("_", 1)
-            summary = f"Наибольшие различия у признака '{feature}' по {stat}."
+            count = len(top_diffs)
+            top_feature_stat = top_diffs[0]['feature_stat']
+            summary = f"Найдено {count} значимых различий. Топ-1: '{top_feature_stat}'."
 
         return {
             "tool_name": tool_name,
@@ -92,7 +98,7 @@ def descriptive_stats_comparator(
             "summary": summary,
             "details": {
                 "threshold_ratio": threshold_ratio,
-                "significant_differences": diffs,
+                "significant_differences": top_diffs, # Возвращаем список словарей, отсортированный
                 "n_features_with_diff": len(diffs),
             },
             "error_message": None,

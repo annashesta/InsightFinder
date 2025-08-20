@@ -1,22 +1,35 @@
 # core/orchestrator.py
+import json
+from typing import Tuple, List, Dict, Any
+
+import pandas as pd
+from langchain_core.messages import HumanMessage
+
 from agents.analyst_agent import create_analyst_agent
 from agents.executor_agent import ExecutorAgent
-from agents.tools_wrapper import set_current_data, ALL_TOOLS
-from langchain_core.messages import HumanMessage
-import pandas as pd
-import json
-from core.logger import get_logger
 from agents.summarizer_agent import generate_summary
+from agents.tools_wrapper import set_current_data, ALL_TOOLS
+from core.logger import get_logger
 from core.utils import make_serializable
 
 logger = get_logger(__name__, "orchestrator.log")
 
 
 def run_simple_orchestration(
-    df: pd.DataFrame, target_column: str, filename: str = "data.csv"
-) -> tuple[list[dict], str]:
+    df: pd.DataFrame, 
+    target_column: str, 
+    filename: str = "data.csv"
+) -> Tuple[List[Dict[str, Any]], str]:
     """
     Основной оркестратор: работает с JsonOutputParser.
+    
+    Args:
+        df: DataFrame с данными для анализа
+        target_column: Название целевой переменной
+        filename: Имя файла данных для отчета
+        
+    Returns:
+        Кортеж из истории выполнения инструментов и финального отчета
     """
     logger.info("Установка данных для инструментов")
     set_current_data(df, target_column)
@@ -25,8 +38,8 @@ def run_simple_orchestration(
     executor = ExecutorAgent(ALL_TOOLS)
     logger.info("Агенты инициализированы")
 
-    history = []
-    insights = []
+    history: List[Dict[str, Any]] = []
+    insights: List[str] = []
 
     step_num = 1
     while True:
@@ -43,8 +56,7 @@ def run_simple_orchestration(
             )
 
         try:
-            # ❌ response = analyst.invoke(...).content
-            # ✅ response — это dict, не AIMessage
+            # response — это dict, не AIMessage
             response = analyst.invoke({
                 "messages": [HumanMessage(content=question)],
                 "agent_scratchpad": []
@@ -54,7 +66,7 @@ def run_simple_orchestration(
             logger.error(f"❌ Ошибка вызова Analyst: {e}")
             break
 
-        # === Парсим ответ ===
+        #  Парсим ответ 
         try:
             # response — это dict, а не строка
             next_step = response["next_step"]
@@ -64,12 +76,12 @@ def run_simple_orchestration(
             logger.error(f"❌ Ошибка извлечения next_step: {e}")
             break
 
-        # === STOP ===
+        # STOP 
         if tool_name.upper() == "STOP":
             logger.info(f"✅ Анализ завершён: {next_step.get('reason', 'Окончание')}")
             break
 
-        # === Запуск инструмента ===
+        # Запуск инструмента 
         try:
             result = executor.run_one_step(tool_name, df=df, target_column=target_column)
             logger.info(f"🚀 Executor выполнил {tool_name}: статус={result['status']}")
@@ -85,7 +97,7 @@ def run_simple_orchestration(
                 "error_message": str(e),
             }
 
-        # === Сохранение результата ===
+        # Сохранение результата
         history.append({
             "tool_name": result["tool_name"],
             "status": result["status"],
@@ -98,7 +110,7 @@ def run_simple_orchestration(
 
         step_num += 1
 
-    # === Генерация отчёта ===
+    # Генерация отчёта 
     logger.info("📝 Генерация итогового отчёта")
     final_report = generate_summary(insights=insights, tool_results=history, filename=filename)
 
