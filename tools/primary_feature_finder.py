@@ -1,14 +1,24 @@
 # tools/primary_feature_finder.py
-
 import numpy as np
 import pandas as pd
 from typing import Dict, Any
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.preprocessing import LabelEncoder
 
-def primary_feature_finder(df: pd.DataFrame, target_column: str, **kwargs) -> Dict[str, Any]:
+
+def primary_feature_finder(
+    df: pd.DataFrame, target_column: str, **kwargs
+) -> Dict[str, Any]:
     """
     Обучает решающее дерево глубины 1 для поиска самого важного признака.
+
+    Args:
+        df: Входной DataFrame.
+        target_column: Имя бинарной целевой переменной.
+        **kwargs: Дополнительные параметры (не используются).
+
+    Returns:
+        Словарь с результатами анализа.
     """
     tool_name = "PrimaryFeatureFinder"
     try:
@@ -18,19 +28,19 @@ def primary_feature_finder(df: pd.DataFrame, target_column: str, **kwargs) -> Di
                 "status": "error",
                 "summary": "",
                 "details": {},
-                "error_message": f"target_column '{target_column}' not found"
+                "error_message": f"target_column '{target_column}' not found",
             }
 
         X = df.drop(columns=[target_column])
         y = df[target_column]
 
-        if X.shape[1] == 0:
+        if X.empty:
             return {
                 "tool_name": tool_name,
                 "status": "error",
                 "summary": "",
                 "details": {},
-                "error_message": "Dataset has only target column"
+                "error_message": "Dataset has only target column",
             }
 
         # Кодируем целевую переменную
@@ -39,7 +49,7 @@ def primary_feature_finder(df: pd.DataFrame, target_column: str, **kwargs) -> Di
         else:
             y = y.astype(int).values
 
-        # ✅ КРИТИЧЕСКАЯ ПРОВЕРКА: целевая переменная должна быть бинарной
+        # Проверка бинарности
         unique_classes = np.unique(y)
         if len(unique_classes) != 2:
             return {
@@ -47,10 +57,10 @@ def primary_feature_finder(df: pd.DataFrame, target_column: str, **kwargs) -> Di
                 "status": "error",
                 "summary": "",
                 "details": {},
-                "error_message": f"Target column must be binary. Found {len(unique_classes)} classes: {unique_classes.tolist()}"
+                "error_message": f"Target column must be binary. Found {len(unique_classes)} classes: {unique_classes.tolist()}",
             }
 
-        # Кодируем признаки
+        # Подготовка признаков
         X_proc = X.copy()
         for col in X_proc.columns:
             if X_proc[col].dtype.kind not in "biufc":
@@ -58,23 +68,24 @@ def primary_feature_finder(df: pd.DataFrame, target_column: str, **kwargs) -> Di
             else:
                 X_proc[col] = X_proc[col].fillna(X_proc[col].median())
 
-        # Обучаем дерево
+        # Обучение дерева
         clf = DecisionTreeClassifier(max_depth=1, random_state=42)
         clf.fit(X_proc.values, y)
 
         feature_idx = int(clf.tree_.feature[0])
-        if feature_idx == -2:
+        if feature_idx == -2:  # no split
             return {
                 "tool_name": tool_name,
                 "status": "error",
                 "summary": "",
                 "details": {},
-                "error_message": "Decision tree did not split"
+                "error_message": "Decision tree did not split",
             }
 
         feature_name = X_proc.columns[feature_idx]
         threshold = float(clf.tree_.threshold[0])
 
+        # Расчёт Information Gain
         n_total = clf.tree_.n_node_samples[0]
         n_left = clf.tree_.n_node_samples[clf.tree_.children_left[0]]
         n_right = clf.tree_.n_node_samples[clf.tree_.children_right[0]]
@@ -90,17 +101,17 @@ def primary_feature_finder(df: pd.DataFrame, target_column: str, **kwargs) -> Di
         )
 
         return {
-            "tool_name": str(tool_name),
+            "tool_name": tool_name,
             "status": "success",
             "summary": summary,
             "details": {
                 "best_feature": feature_name,
-                "split_threshold": float(threshold),
-                "information_gain": float(information_gain),
-                "n_left": int(n_left),
-                "n_right": int(n_right)
+                "split_threshold": threshold,
+                "information_gain": information_gain,
+                "n_left": n_left,
+                "n_right": n_right,
             },
-            "error_message": None
+            "error_message": None,
         }
 
     except Exception as e:
@@ -109,5 +120,5 @@ def primary_feature_finder(df: pd.DataFrame, target_column: str, **kwargs) -> Di
             "status": "error",
             "summary": "",
             "details": {},
-            "error_message": str(e)
+            "error_message": str(e),
         }

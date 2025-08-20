@@ -1,41 +1,53 @@
 # tools/full_model_importance.py
-
 import pandas as pd
-import numpy as  np
+import numpy as np
 from typing import Dict, Any
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
 
-def full_model_importance(df: pd.DataFrame, target_column: str, top_k: int = 10, **kwargs) -> Dict[str, Any]:
+
+def full_model_importance(
+    df: pd.DataFrame, target_column: str, top_k: int = 10, **kwargs
+) -> Dict[str, Any]:
     """
     Обучает RandomForestClassifier и возвращает топ-K важных признаков.
+
+    Args:
+        df: Входной DataFrame.
+        target_column: Имя бинарной целевой переменной.
+        top_k: Количество топ-признаков для возврата (по умолчанию 10).
+        **kwargs: Дополнительные параметры.
+
+    Returns:
+        Словарь с результатами анализа.
     """
     tool_name = "FullModelFeatureImportance"
     try:
         if target_column not in df.columns:
-            return {"tool_name": tool_name, "status": "error", "summary": "", "details": {}, "error_message": f"target_column '{target_column}' not found"}
+            return {
+                "tool_name": tool_name,
+                "status": "error",
+                "summary": "",
+                "details": {},
+                "error_message": f"target_column '{target_column}' not found",
+            }
 
         X = df.drop(columns=[target_column])
         y = df[target_column]
-        
-        # Кодируем целевую
+
         if y.dtype.kind not in "biufc":
             y = LabelEncoder().fit_transform(y.astype(str))
         else:
             y = y.astype(int).values
 
-
-        # Проверка
         if len(np.unique(y)) != 2:
             return {
                 "tool_name": tool_name,
                 "status": "error",
                 "summary": "",
                 "details": {},
-                "error_message": f"Target column must be binary. Found {len(np.unique(y))} classes: {np.unique(y).tolist()}"
+                "error_message": f"Target column must be binary. Found {len(np.unique(y))} classes: {np.unique(y).tolist()}",
             }
-
-        # Кодируем категориальные признаки
 
         X_proc = X.copy()
         for col in X_proc.columns:
@@ -45,21 +57,43 @@ def full_model_importance(df: pd.DataFrame, target_column: str, top_k: int = 10,
                 X_proc[col] = X_proc[col].fillna(X_proc[col].median())
 
         if X_proc.empty:
-            return {"tool_name": tool_name, "status": "error", "summary": "", "details": {}, "error_message": "No features after preprocessing"}
+            return {
+                "tool_name": tool_name,
+                "status": "error",
+                "summary": "",
+                "details": {},
+                "error_message": "No features after preprocessing",
+            }
 
         clf = RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)
         clf.fit(X_proc, y)
 
         importances = clf.feature_importances_
-        importance_df = pd.DataFrame({"feature": X_proc.columns, "importance": importances})
+        importance_df = pd.DataFrame(
+            {"feature": X_proc.columns, "importance": importances}
+        )
         top_features = importance_df.sort_values("importance", ascending=False).head(top_k)
         feat_dict = top_features.set_index("feature")["importance"].to_dict()
 
         summary = f"Топ-важный признак по RandomForest — '{next(iter(feat_dict))}'"
 
-        return {"tool_name": tool_name, "status": "success", "summary": summary,
-                "details": {"top_k": top_k, "feature_importances": feat_dict, "model": "RandomForestClassifier"},
-                "error_message": None}
+        return {
+            "tool_name": tool_name,
+            "status": "success",
+            "summary": summary,
+            "details": {
+                "top_k": top_k,
+                "feature_importances": feat_dict,
+                "model": "RandomForestClassifier",
+            },
+            "error_message": None,
+        }
 
     except Exception as e:
-        return {"tool_name": tool_name, "status": "error", "summary": "", "details": {}, "error_message": str(e)}
+        return {
+            "tool_name": tool_name,
+            "status": "error",
+            "summary": "",
+            "details": {},
+            "error_message": str(e),
+        }

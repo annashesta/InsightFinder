@@ -9,10 +9,10 @@
 ```
 insightfinder/
 │
-├── data/                       # Папка с тестовыми и примерами CSV-файлов
+├── data/
 │   └── telecom_eda_data.csv
 │
-├── tools/                      # Библиотека аналитических инструментов
+├── tools/
 │   ├── __init__.py
 │   ├── primary_feature_finder.py
 │   ├── correlation_analysis.py
@@ -20,33 +20,34 @@ insightfinder/
 │   ├── categorical_feature_analysis.py
 │   └── full_model_importance.py
 │
-├── agents/                     # Модули агентов
+├── agents/
 │   ├── __init__.py
 │   ├── analyst_agent.py
 │   ├── executor_agent.py
 │   ├── summarizer_agent.py
-│   └── tools_wrapper.py  # Обёртка для тулзов
+│   └── tools_wrapper.py
 │
-├── core/                       # Ядро системы
+├── core/
 │   ├── data_loader.py
-│   └── orchestrator.py
+│   ├── orchestrator.py
+│   └── utils.py
+│   └── logger.py
 │
-├── report/                     # Генерация отчёта
+├── report/
 │   ├── templates/
 │   │   └── report_template.md.j2
 │   └── generate_report.py
 │
-├── config/                     # Конфигурация
+├── config/
 │   └── agent_prompts.py
 │
-├── tests/                      # Юнит-тесты
+├── tests/
 │   ├── test_tools.py
 │   └── test_edge_cases.py
 │
-├── main.py                     # Точка входа
+├── main.py
 ├── requirements.txt
-└── README.md                   # Документация
-
+└── README.md
 ```
 
 
