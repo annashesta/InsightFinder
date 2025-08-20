@@ -1,23 +1,14 @@
 # agents/summarizer_agent.py
-
-# 3. Summarizer_Agent (Обобщающий агент)
-# - Роль: Генерирует итоговый отчёт.
-# - Особенности:
-#   - Получает всю историю диалога и результаты всех инструментов.
-#   - Использует шаблон для формирования структурированного отчёта.
-#   - Генерирует заключение сама, без захардкоженного текста.
-
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from dotenv import load_dotenv
 import os
 from core.logger import get_logger
 
-# Загружаем переменные окружения
 load_dotenv()
-logger = get_logger(__name__)
+logger = get_logger(__name__, "summarizer.log")
 
-# Промпт: строгий, без выдумывания
+
 SUMMARIZER_PROMPT = """
 Ты — эксперт по аналитике. На основе результатов инструментов сгенерируй отчёт.
 Ты НЕ можешь выдумывать данные. Если раздел отсутствует — напиши "Нет данных".
@@ -52,33 +43,25 @@ SUMMARIZER_PROMPT = """
 Если данных недостаточно — напиши "Недостаточно данных".
 """
 
-def generate_summary(insights: list, tool_results: list, filename: str = "unknown.csv") -> str:
-    """
-    Генерирует отчёт на основе фактов из tool_results.
-    Не выдумывает данные.
-    """
 
+def generate_summary(insights: list, tool_results: list, filename: str = "unknown.csv") -> str:
     logger.info(f"📝 Summarizer Agent инициализирован для файла {filename}")
 
-    # Загружаем LLM
     llm = ChatOpenAI(
-        model="qwen2.5-32b-instruct",  # можно заменить на свой
+        model="qwen2.5-32b-instruct",
         api_key=os.getenv("OPENAI_API_KEY"),
         base_url=os.getenv("OPENAI_BASE_URL"),
         temperature=0.3
     )
 
-    # Извлекаем результаты по именам
     results_map = {res["tool_name"]: res for res in tool_results}
 
     def get_summary(name: str) -> str:
         res = results_map.get(name)
         return res["summary"] if res and res["status"] == "success" else "Нет данных"
 
-    # Формируем выводы
     insights_list = "\n".join([f"- {s}" for s in insights]) if insights else "Нет данных"
 
-    # Подставляем в шаблон
     prompt = ChatPromptTemplate.from_template(SUMMARIZER_PROMPT)
     chain = prompt | llm
 

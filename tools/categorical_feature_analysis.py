@@ -1,15 +1,35 @@
 # tools/categorical_feature_analysis.py
-
 import pandas as pd
 from typing import Any, Dict
 from scipy.stats import chi2_contingency
 from sklearn.preprocessing import LabelEncoder
 
-def categorical_feature_analysis(df: pd.DataFrame, target_column: str, p_value_threshold: float = 0.05, **kwargs) -> Dict[str, Any]:
+
+def categorical_feature_analysis(
+    df: pd.DataFrame, target_column: str, p_value_threshold: float = 0.05, **kwargs
+) -> Dict[str, Any]:
+    """
+    Проверяет связь категориальных признаков с целевой переменной через тест Хи-квадрат.
+
+    Args:
+        df: Входной DataFrame.
+        target_column: Имя бинарной целевой переменной.
+        p_value_threshold: Порог p-value для значимости (по умолчанию 0.05).
+        **kwargs: Дополнительные параметры.
+
+    Returns:
+        Словарь с результатами анализа.
+    """
     tool_name = "CategoricalFeatureAnalysis"
     try:
         if target_column not in df.columns:
-            return {"tool_name": tool_name, "status": "error", "summary": "", "details": {}, "error_message": f"target_column '{target_column}' not found"}
+            return {
+                "tool_name": tool_name,
+                "status": "error",
+                "summary": "",
+                "details": {},
+                "error_message": f"target_column '{target_column}' not found",
+            }
 
         y = df[target_column]
         X = df.drop(columns=[target_column])
@@ -19,9 +39,15 @@ def categorical_feature_analysis(df: pd.DataFrame, target_column: str, p_value_t
         else:
             y = y.astype(int).values
 
-        X_cat = X.select_dtypes(include=['object', 'category']).copy()
+        X_cat = X.select_dtypes(include=["object", "category"]).copy()
         if X_cat.empty:
-            return {"tool_name": tool_name, "status": "error", "summary": "", "details": {}, "error_message": "No categorical features"}
+            return {
+                "tool_name": tool_name,
+                "status": "error",
+                "summary": "",
+                "details": {},
+                "error_message": "No categorical features",
+            }
 
         significant = {}
         for col in X_cat.columns:
@@ -31,7 +57,11 @@ def categorical_feature_analysis(df: pd.DataFrame, target_column: str, p_value_t
             try:
                 chi2, p, dof, _ = chi2_contingency(cross_tab)
                 if p < p_value_threshold:
-                    significant[col] = {"p_value": float(p), "chi2": float(chi2), "dof": int(dof)}
+                    significant[col] = {
+                        "p_value": float(p),
+                        "chi2": float(chi2),
+                        "dof": int(dof),
+                    }
             except Exception:
                 continue
 
@@ -40,9 +70,23 @@ def categorical_feature_analysis(df: pd.DataFrame, target_column: str, p_value_t
         else:
             summary = f"Найдено {len(significant)} значимых категориальных признаков."
 
-        return {"tool_name": tool_name, "status": "success", "summary": summary,
-                "details": {"p_value_threshold": p_value_threshold, "significant_features": significant, "n_significant": len(significant)},
-                "error_message": None}
+        return {
+            "tool_name": tool_name,
+            "status": "success",
+            "summary": summary,
+            "details": {
+                "p_value_threshold": p_value_threshold,
+                "significant_features": significant,
+                "n_significant": len(significant),
+            },
+            "error_message": None,
+        }
 
     except Exception as e:
-        return {"tool_name": tool_name, "status": "error", "summary": "", "details": {}, "error_message": str(e)}
+        return {
+            "tool_name": tool_name,
+            "status": "error",
+            "summary": "",
+            "details": {},
+            "error_message": str(e),
+        }
