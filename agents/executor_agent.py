@@ -1,37 +1,30 @@
 # agents/executor_agent.py
-
-#Executor_Agent (Исполнитель)
-# - Роль: Выполняет вызовы Python-функций (инструментов).
-# - Особенности:
-#   - Должен иметь доступ к функциям из `tools/`.
-#   - Использует `UserProxyAgent` из AutoGen с `function_map`.
-#   - Настройка: `allow_code_execution=True`, `code_execution_config`.
-
-
-# agents/executor_agent.py
 from langchain.agents import AgentExecutor
 from langchain_openai import ChatOpenAI
-from langchain import hub
 from langchain.agents import create_tool_calling_agent
 
+from core.logger import get_logger
 
-def create_executor_agent(tools, analyst_prompt, analyst_llm):
-    """
-    Используем create_tool_calling_agent — более современный и надёжный способ
-    """
-    # Создаём агент с явной поддержкой вызова тулзов
-    agent = create_tool_calling_agent(
-        llm=analyst_llm,
-        tools=tools,
-        prompt=analyst_prompt
-    )
+logger = get_logger(__name__)
 
-    return AgentExecutor(
-        agent=agent,
-        tools=tools,
-        verbose=True,
-        handle_parsing_errors=True,
-        max_iterations=15
-    )
-    
-    
+
+class ExecutorAgent:
+    """
+    Исполнитель: вызывает инструменты по имени.
+    Здесь нет LLM, только маппинг tool_name -> функция.
+    """
+
+    def __init__(self, tools):
+        self.tools = {t.name: t for t in tools}
+        logger.info(f"Executor Agent инициализирован с {len(tools)} инструментами")
+
+    def run_one_step(self, tool_name: str, **kwargs):
+        """
+        Выполнить один шаг: вызвать инструмент по имени
+        """
+        if tool_name not in self.tools:
+            raise ValueError(f"Инструмент {tool_name} не найден среди доступных")
+
+        tool = self.tools[tool_name]
+        logger.info(f"🚀 Запуск инструмента: {tool_name}")
+        return tool.run(tool_input="", **kwargs)

@@ -5,17 +5,17 @@
 # - Особенности:
 #   - Получает всю историю диалога и результаты всех инструментов.
 #   - Использует шаблон для формирования структурированного отчёта.
-#   - Может быть настроен на выделение "ключевых инсайтов" в виде маркированного списка.
-  
- 
+#   - Генерирует заключение сама, без захардкоженного текста.
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from dotenv import load_dotenv
 import os
+from core.logger import get_logger
 
 # Загружаем переменные окружения
 load_dotenv()
+logger = get_logger(__name__)
 
 # Промпт: строгий, без выдумывания
 SUMMARIZER_PROMPT = """
@@ -47,18 +47,22 @@ SUMMARIZER_PROMPT = """
 {full_model_summary}
 
 ## Заключение
-{conclusion}
+Сформулируй общий вывод на основе всех предыдущих разделов.
+Объясни, какие характеристики и паттерны поведения наиболее сильно отличают группу 1 от группы 0.
+Если данных недостаточно — напиши "Недостаточно данных".
 """
-
 
 def generate_summary(insights: list, tool_results: list, filename: str = "unknown.csv") -> str:
     """
     Генерирует отчёт на основе фактов из tool_results.
     Не выдумывает данные.
     """
+
+    logger.info(f"📝 Summarizer Agent инициализирован для файла {filename}")
+
     # Загружаем LLM
     llm = ChatOpenAI(
-        model="qwen2.5-32b-instruct",
+        model="qwen2.5-32b-instruct",  # можно заменить на свой
         api_key=os.getenv("OPENAI_API_KEY"),
         base_url=os.getenv("OPENAI_BASE_URL"),
         temperature=0.3
@@ -72,7 +76,7 @@ def generate_summary(insights: list, tool_results: list, filename: str = "unknow
         return res["summary"] if res and res["status"] == "success" else "Нет данных"
 
     # Формируем выводы
-    insights_list = "\n".join([f"- {s}" for s in insights])
+    insights_list = "\n".join([f"- {s}" for s in insights]) if insights else "Нет данных"
 
     # Подставляем в шаблон
     prompt = ChatPromptTemplate.from_template(SUMMARIZER_PROMPT)
@@ -86,11 +90,6 @@ def generate_summary(insights: list, tool_results: list, filename: str = "unknow
         "descriptive_stats_summary": get_summary("DescriptiveStatsComparator"),
         "categorical_analysis_summary": get_summary("CategoricalFeatureAnalysis"),
         "full_model_summary": get_summary("FullModelFeatureImportance"),
-        "conclusion": (
-            "На основе анализа, наиболее важными факторами, отличающими группы, являются "
-            "продолжительность использования оборудования, участие в программах удержания и тип контракта. "
-            "Рекомендуется сфокусироваться на клиентах с высоким значением CurrentEquipmentDays и RetentionCalls."
-        )
     })
 
     return response.content

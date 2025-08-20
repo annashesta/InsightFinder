@@ -90,13 +90,13 @@ def primary_feature_finder(df: pd.DataFrame, target_column: str, **kwargs) -> Di
         )
 
         return {
-            "tool_name": tool_name,
+            "tool_name": str(tool_name),
             "status": "success",
             "summary": summary,
             "details": {
                 "best_feature": feature_name,
-                "split_threshold": threshold,
-                "information_gain": information_gain,
+                "split_threshold": float(threshold),
+                "information_gain": float(information_gain),
                 "n_left": int(n_left),
                 "n_right": int(n_right)
             },

@@ -27,7 +27,7 @@ class PrimaryFeatureFinderTool(BaseTool):
     description: str = "Находит самый важный признак, разделяющий группы по целевой переменной, с помощью дерева глубины 1."
     return_direct: bool = False
 
-    def _run(self) -> dict:
+    def _run(self, tool_input: Any = None, **kwargs) -> dict:
         if CURRENT_DF is None or CURRENT_TARGET is None:
             return {
                 "tool_name": self.name,
@@ -36,8 +36,7 @@ class PrimaryFeatureFinderTool(BaseTool):
                 "details": {},
                 "error_message": "Ошибка: данные не загружены."
             }
-        result = primary_feature_finder(CURRENT_DF, CURRENT_TARGET)
-        return result
+        return primary_feature_finder(CURRENT_DF, CURRENT_TARGET)
 
 
 class CorrelationAnalysisTool(BaseTool):
@@ -45,7 +44,7 @@ class CorrelationAnalysisTool(BaseTool):
     description: str = "Анализирует корреляцию числовых признаков с бинарной целевой переменной (point-biserial)."
     return_direct: bool = False
 
-    def _run(self) -> dict:
+    def _run(self, tool_input: Any = None, **kwargs) -> dict:
         if CURRENT_DF is None or CURRENT_TARGET is None:
             return {
                 "tool_name": self.name,
@@ -54,8 +53,7 @@ class CorrelationAnalysisTool(BaseTool):
                 "details": {},
                 "error_message": "Ошибка: данные не загружены."
             }
-        result = correlation_analysis(CURRENT_DF, CURRENT_TARGET)
-        return result
+        return correlation_analysis(CURRENT_DF, CURRENT_TARGET)
 
 
 class DescriptiveStatsComparatorTool(BaseTool):
@@ -63,7 +61,7 @@ class DescriptiveStatsComparatorTool(BaseTool):
     description: str = "Сравнивает средние и медианы по группам (0 и 1), находит значимые различия (>20%)."
     return_direct: bool = False
 
-    def _run(self) -> dict:
+    def _run(self, tool_input: Any = None, **kwargs) -> dict:
         if CURRENT_DF is None or CURRENT_TARGET is None:
             return {
                 "tool_name": self.name,
@@ -72,8 +70,7 @@ class DescriptiveStatsComparatorTool(BaseTool):
                 "details": {},
                 "error_message": "Ошибка: данные не загружены."
             }
-        result = descriptive_stats_comparator(CURRENT_DF, CURRENT_TARGET)
-        return result
+        return descriptive_stats_comparator(CURRENT_DF, CURRENT_TARGET)
 
 
 class CategoricalFeatureAnalysisTool(BaseTool):
@@ -81,7 +78,7 @@ class CategoricalFeatureAnalysisTool(BaseTool):
     description: str = "Проверяет связь категориальных признаков с целевой переменной через тест Хи-квадрат."
     return_direct: bool = False
 
-    def _run(self) -> dict:
+    def _run(self, tool_input: Any = None, **kwargs) -> dict:
         if CURRENT_DF is None or CURRENT_TARGET is None:
             return {
                 "tool_name": self.name,
@@ -90,8 +87,7 @@ class CategoricalFeatureAnalysisTool(BaseTool):
                 "details": {},
                 "error_message": "Ошибка: данные не загружены."
             }
-        result = categorical_feature_analysis(CURRENT_DF, CURRENT_TARGET)
-        return result
+        return categorical_feature_analysis(CURRENT_DF, CURRENT_TARGET)
 
 
 class FullModelFeatureImportanceTool(BaseTool):
@@ -99,7 +95,7 @@ class FullModelFeatureImportanceTool(BaseTool):
     description: str = "Обучает Random Forest и возвращает топ-10 важных признаков."
     return_direct: bool = False
 
-    def _run(self) -> dict:
+    def _run(self, tool_input: Any = None, **kwargs) -> dict:
         if CURRENT_DF is None or CURRENT_TARGET is None:
             return {
                 "tool_name": self.name,
@@ -108,8 +104,7 @@ class FullModelFeatureImportanceTool(BaseTool):
                 "details": {},
                 "error_message": "Ошибка: данные не загружены."
             }
-        result = full_model_importance(CURRENT_DF, CURRENT_TARGET)
-        return result
+        return full_model_importance(CURRENT_DF, CURRENT_TARGET)
 
 
 # Список всех тулзов

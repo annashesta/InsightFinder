@@ -14,9 +14,12 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_openai import ChatOpenAI
 from dotenv import load_dotenv
 import os
+from core.logger import get_logger
 
 # Загружаем переменные окружения
 load_dotenv()
+
+logger = get_logger(__name__)
 
 # Промпт для Аналитика
 ANALYST_SYSTEM_PROMPT = """Ты — опытный аналитик данных. Твоя задача — исследовать различия между двумя группами по бинарной целевой переменной.
@@ -32,14 +35,18 @@ ANALYST_SYSTEM_PROMPT = """Ты — опытный аналитик данных
 4. В конце — FullModelFeatureImportance для итоговой оценки.
 
 Не запускай один и тот же инструмент дважды.
-Когда все ключевые инсайты получены, скажи: "Все необходимые инструменты запущены. Передаю результаты Summarizer."
+Когда все ключевые инсайты получены, скажи: {{{{"tool": "STOP", "reason": "Все необходимые инструменты запущены."}}}}
 """
+
 
 def create_analyst_agent(tools):
     """
     Создаёт промпт и LLM для Analyst'а.
     Важно: промпт должен включать MessagesPlaceholder для {agent_scratchpad}
     """
+
+    logger.info(f"Analysis Agent инициализирован")
+
     prompt = ChatPromptTemplate.from_messages([
         ("system", ANALYST_SYSTEM_PROMPT.format(tools="\n".join([f"- {t.name}: {t.description}" for t in tools]))),
         ("placeholder", "{messages}"),  # Здесь будут user и assistant сообщения
@@ -52,4 +59,5 @@ def create_analyst_agent(tools):
         temperature=0.3,
         max_tokens=4096
     )
-    return {"prompt": prompt, "llm": llm}
+
+    return prompt | llm
