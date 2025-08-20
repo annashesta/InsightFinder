@@ -9,6 +9,9 @@ from tools.correlation_analysis import correlation_analysis
 from tools.descriptive_stats_comparator import descriptive_stats_comparator
 from tools.categorical_feature_analysis import categorical_feature_analysis
 from tools.full_model_importance import full_model_importance
+from tools.distribution_visualizer import distribution_visualizer
+from tools.outlier_detector import outlier_detector
+from tools.interaction_analyzer import interaction_analyzer
 
 # Глобальные переменные для передачи данных
 CURRENT_DF = None
@@ -107,6 +110,57 @@ class FullModelFeatureImportanceTool(BaseTool):
         return full_model_importance(CURRENT_DF, CURRENT_TARGET)
 
 
+class DistributionVisualizerTool(BaseTool):
+    name: str = "DistributionVisualizer"
+    description: str = "Создаёт визуализации распределений ключевых признаков между группами."
+    return_direct: bool = False
+
+    def _run(self, tool_input: Any = None, **kwargs) -> dict:
+        if CURRENT_DF is None or CURRENT_TARGET is None:
+            return {
+                "tool_name": self.name,
+                "status": "error",
+                "summary": "",
+                "details": {},
+                "error_message": "Ошибка: данные не загружены."
+            }
+        return distribution_visualizer(CURRENT_DF, CURRENT_TARGET)
+
+
+class OutlierDetectorTool(BaseTool):
+    name: str = "OutlierDetector"
+    description: str = "Обнаруживает выбросы в числовых признаках данных."
+    return_direct: bool = False
+
+    def _run(self, tool_input: Any = None, **kwargs) -> dict:
+        if CURRENT_DF is None or CURRENT_TARGET is None:
+            return {
+                "tool_name": self.name,
+                "status": "error",
+                "summary": "",
+                "details": {},
+                "error_message": "Ошибка: данные не загружены."
+            }
+        return outlier_detector(CURRENT_DF, CURRENT_TARGET)
+
+
+class InteractionAnalyzerTool(BaseTool):
+    name: str = "InteractionAnalyzer"
+    description: str = "Анализирует взаимодействия между признаками и целевой переменной."
+    return_direct: bool = False
+
+    def _run(self, tool_input: Any = None, **kwargs) -> dict:
+        if CURRENT_DF is None or CURRENT_TARGET is None:
+            return {
+                "tool_name": self.name,
+                "status": "error",
+                "summary": "",
+                "details": {},
+                "error_message": "Ошибка: данные не загружены."
+            }
+        return interaction_analyzer(CURRENT_DF, CURRENT_TARGET)
+
+
 # Список всех тулзов
 ALL_TOOLS = [
     PrimaryFeatureFinderTool(),
@@ -114,4 +168,7 @@ ALL_TOOLS = [
     DescriptiveStatsComparatorTool(),
     CategoricalFeatureAnalysisTool(),
     FullModelFeatureImportanceTool(),
+    DistributionVisualizerTool(),
+    OutlierDetectorTool(),
+    InteractionAnalyzerTool(),
 ]

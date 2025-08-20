@@ -1,15 +1,18 @@
 # agents/summarizer_agent.py
+import os
+from typing import List, Dict, Any, Optional
+
+from dotenv import load_dotenv
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
-from dotenv import load_dotenv
-import os
+
 from core.logger import get_logger
 
 load_dotenv()
 logger = get_logger(__name__, "summarizer.log")
 
 
-def _format_categorical_details(result):
+def _format_categorical_details(result: Optional[Dict[str, Any]]) -> str:
     """Форматирует детали категориальных признаков."""
     if not result or result["status"] != "success":
         return ""
@@ -29,7 +32,7 @@ def _format_categorical_details(result):
     return "\n".join(lines)
 
 
-def _format_correlation_details(result):
+def _format_correlation_details(result: Optional[Dict[str, Any]]) -> str:
     """Форматирует детали корреляционного анализа."""
     if not result or result["status"] != "success":
         return ""
@@ -52,7 +55,7 @@ def _format_correlation_details(result):
     return "\n".join(lines)
 
 
-def _format_stats_details(result):
+def _format_stats_details(result: Optional[Dict[str, Any]]) -> str:
     """Форматирует детали сравнения статистик."""
     if not result or result["status"] != "success":
         return ""
@@ -75,7 +78,7 @@ def _format_stats_details(result):
     return "\n".join(lines)
 
 
-def _format_model_details(result):
+def _format_model_details(result: Optional[Dict[str, Any]]) -> str:
     """Форматирует детали важности признаков."""
     if not result or result["status"] != "success":
         return ""
@@ -91,6 +94,104 @@ def _format_model_details(result):
         lines.append(f"- {feature}: {importance:.4f}")
     
     return "\n".join(lines)
+
+
+def _format_visualization_details(result: Optional[Dict[str, Any]]) -> str:
+    """Форматирует визуализации для отчёта."""
+    if not result or result["status"] != "success":
+        return ""
+    
+    details = result.get("details", {})
+    visualizations = details.get("visualizations", {})
+    
+    if not visualizations:
+        return ""
+    
+    lines = ["\n**Визуализации распределений:**"]
+    for feature, viz_data in visualizations.items():
+        image_base64 = viz_data.get("image_base64", "")
+        description = viz_data.get("description", "")
+        lines.append(f"\n### Распределение {feature}")
+        lines.append(f"*{description}*")
+        lines.append(f"![{feature}](data:image/png;base64,{image_base64})")
+    
+    return "\n".join(lines)
+
+
+def _format_outlier_details(result: Optional[Dict[str, Any]]) -> str:
+    """Форматирует детали обнаружения выбросов."""
+    if not result or result["status"] != "success":
+        return ""
+    
+    details = result.get("details", {})
+    outliers = details.get("outliers", {})
+    
+    if not outliers:
+        return ""
+    
+    lines = ["\n**Обнаруженные выбросы:**"]
+    lines.append("| Признак | Количество выбросов | Процент | Метод |")
+    lines.append("|---------|-------------------|---------|-------|")
+    for feature, stats in outliers.items():
+        count = stats.get('count', 'N/A')
+        percentage = stats.get('percentage', 'N/A')
+        method = stats.get('method', 'N/A')
+        lines.append(f"| {feature} | {count} | {percentage:.2f}% | {method} |")
+    
+    return "\n".join(lines)
+
+
+def _format_interaction_details(result: Optional[Dict[str, Any]]) -> str:
+    """Форматирует детали анализа взаимодействий."""
+    if not result or result["status"] != "success":
+        return ""
+    
+    details = result.get("details", {})
+    interactions = details.get("interactions", [])
+    
+    if not interactions:
+        return ""
+    
+    lines = ["\n**Анализ взаимодействий:**"]
+    lines.append("| Признак | Тип | Значение | Метрика |")
+    lines.append("|---------|-----|----------|---------|")
+    for interaction in interactions:
+        feature = interaction.get('feature', 'N/A')
+        type_ = interaction.get('type', 'N/A')
+        value = interaction.get('value', 'N/A')
+        metric = interaction.get('metric', 'N/A')
+        
+        # Обработка значения в зависимости от метрики и типа
+        if metric == "p_value":
+            try:
+                # Пробуем преобразовать в число для форматирования
+                p_val = float(value)
+                value_str = f"p={p_val:.2e}"
+            except (ValueError, TypeError):
+                # Если не удалось, оставляем как есть
+                value_str = f"p={value}"
+                
+            chi2 = interaction.get('chi2')
+            if chi2 is not None:
+                try:
+                    chi2_val = float(chi2)
+                    value_str += f", χ²={chi2_val:.2f}"
+                except (ValueError, TypeError):
+                    value_str += f", χ²={chi2}"
+        else:
+            # Для корреляции и других метрик
+            try:
+                # Пробуем преобразовать в число для форматирования
+                corr_val = float(value)
+                value_str = f"{corr_val:.3f}"
+            except (ValueError, TypeError):
+                # Если не удалось, оставляем как есть
+                value_str = f"{value}"
+            
+        lines.append(f"| {feature} | {type_} | {value_str} | {metric} |")
+    
+    return "\n".join(lines)
+
 
 
 SUMMARIZER_PROMPT = """
@@ -121,7 +222,19 @@ SUMMARIZER_PROMPT = """
 {categorical_analysis_summary}
 {categorical_details}
 
-### 5. Важность признаков из полной модели
+### 5. Анализ распределений
+{visualization_summary}
+{visualization_details}
+
+### 6. Обнаружение выбросов
+{outlier_summary}
+{outlier_details}
+
+### 7. Анализ взаимодействий
+{interaction_summary}
+{interaction_details}
+
+### 8. Важность признаков из полной модели
 {full_model_summary}
 {model_details}
 
@@ -132,7 +245,12 @@ SUMMARIZER_PROMPT = """
 """
 
 
-def generate_summary(insights: list, tool_results: list, filename: str = "unknown.csv") -> str:
+def generate_summary(
+    insights: List[str], 
+    tool_results: List[Dict[str, Any]], 
+    filename: str = "unknown.csv"
+) -> str:
+    """Генерирует итоговый аналитический отчёт на основе результатов инструментов."""
     logger.info(f"📝 Summarizer Agent инициализирован для файла {filename}")
 
     llm = ChatOpenAI(
@@ -153,6 +271,9 @@ def generate_summary(insights: list, tool_results: list, filename: str = "unknow
     stats_result = results_map.get("DescriptiveStatsComparator")
     categorical_result = results_map.get("CategoricalFeatureAnalysis")
     model_result = results_map.get("FullModelFeatureImportance")
+    visualization_result = results_map.get("DistributionVisualizer")
+    outlier_result = results_map.get("OutlierDetector")
+    interaction_result = results_map.get("InteractionAnalyzer")
 
     insights_list = "\n".join([f"- {s}" for s in insights]) if insights else "Нет данных"
 
@@ -169,6 +290,12 @@ def generate_summary(insights: list, tool_results: list, filename: str = "unknow
         "stats_details": _format_stats_details(stats_result),
         "categorical_analysis_summary": get_summary("CategoricalFeatureAnalysis"),
         "categorical_details": _format_categorical_details(categorical_result),
+        "visualization_summary": get_summary("DistributionVisualizer"),
+        "visualization_details": _format_visualization_details(visualization_result),
+        "outlier_summary": get_summary("OutlierDetector"),
+        "outlier_details": _format_outlier_details(outlier_result),
+        "interaction_summary": get_summary("InteractionAnalyzer"),
+        "interaction_details": _format_interaction_details(interaction_result),
         "full_model_summary": get_summary("FullModelFeatureImportance"),
         "model_details": _format_model_details(model_result),
     })

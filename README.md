@@ -51,6 +51,9 @@ insightfinder/
 │
 ├── tools/
 │   ├── __init__.py
+│   ├──  И ТУТ ЕЩЕ 3 нужно вписать
+│   ├── 
+│   ├── 
 │   ├── primary_feature_finder.py     # Поиск главного признака (Decision Tree)
 │   ├── correlation_analysis.py       # Анализ корреляций (Point-Biserial)
 │   ├── descriptive_stats_comparator.py # Сравнение статистик (mean, median и т.д.)
