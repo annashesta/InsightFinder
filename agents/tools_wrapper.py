@@ -12,6 +12,7 @@ from tools.full_model_importance import full_model_importance
 from tools.distribution_visualizer import distribution_visualizer
 from tools.outlier_detector import outlier_detector
 from tools.interaction_analyzer import interaction_analyzer
+from tools.insight_driven_visualizer import insight_driven_visualizer
 
 # Глобальные переменные для передачи данных
 CURRENT_DF = None
@@ -160,6 +161,23 @@ class InteractionAnalyzerTool(BaseTool):
             }
         return interaction_analyzer(CURRENT_DF, CURRENT_TARGET)
 
+class InsightDrivenVisualizerTool(BaseTool):
+    name: str = "InsightDrivenVisualizer"
+    description: str = "Создаёт целенаправленные графики на основе результатов предыдущих анализов."
+    return_direct: bool = False
+
+    def _run(self, tool_input: Any = None, **kwargs) -> dict:
+        # Этот инструмент требует специальных аргументов, передаваемых оркестратором
+        # В wrapper мы не можем получить history, это делает orchestrator
+        # Поэтому реализация будет в orchestrator через executor
+        # Здесь просто заглушка, которая не будет вызвана напрямую Analyst'ом
+        return {
+            "tool_name": self.name,
+            "status": "error",
+            "summary": "",
+            "details": {},
+            "error_message": "Этот инструмент должен вызываться оркестратором с полным контекстом.",
+        }
 
 # Список всех тулзов
 ALL_TOOLS = [
@@ -171,4 +189,5 @@ ALL_TOOLS = [
     DistributionVisualizerTool(),
     OutlierDetectorTool(),
     InteractionAnalyzerTool(),
+    # InsightDrivenVisualizerTool(),
 ]

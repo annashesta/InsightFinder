@@ -97,23 +97,25 @@ def _format_model_details(result: Optional[Dict[str, Any]]) -> str:
 
 
 def _format_visualization_details(result: Optional[Dict[str, Any]]) -> str:
-    """Форматирует визуализации для отчёта."""
+    """Форматирует визуализации для отчёта, используя пути к файлам."""
     if not result or result["status"] != "success":
         return ""
     
     details = result.get("details", {})
-    visualizations = details.get("visualizations", {})
+    saved_images = details.get("saved_images", {})
     
-    if not visualizations:
+    if not saved_images:
         return ""
     
     lines = ["\n**Визуализации распределений:**"]
-    for feature, viz_data in visualizations.items():
-        image_base64 = viz_data.get("image_base64", "")
-        description = viz_data.get("description", "")
+    for feature, image_data in saved_images.items():
+        relative_path = image_data.get("relative_path", "")
+        description = image_data.get("description", "")
         lines.append(f"\n### Распределение {feature}")
         lines.append(f"*{description}*")
-        lines.append(f"![{feature}](data:image/png;base64,{image_base64})")
+        # Вставляем изображение по относительному пути
+        if relative_path:
+            lines.append(f"![{feature}]({relative_path})")
     
     return "\n".join(lines)
 
@@ -193,6 +195,46 @@ def _format_interaction_details(result: Optional[Dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
+def _format_insight_visualization_details(result: Optional[Dict[str, Any]]) -> str:
+    """Форматирует детали InsightDrivenVisualizer для отчёта."""
+    if not result or result["status"] != "success":
+        return ""
+    
+    details = result.get("details", {})
+    saved_plots = details.get("saved_plots", {})
+    
+    if not saved_plots:
+        return ""
+    
+    lines = ["\n**Инсайт-ориентированные визуализации:**"]
+    for plot_key, plot_data in saved_plots.items():
+        description = plot_data.get("description", "")
+        lines.append(f"\n### {description}")
+        
+        # Добавляем пути к изображениям
+        for plot_type, filepath in plot_data.items():
+            if plot_type != "description" and filepath and isinstance(filepath, str) and filepath.endswith('.png'):
+                # Извлекаем относительный путь для Markdown
+                # Предполагаем, что файлы сохраняются в report/output/images/
+                # filepath может быть, например: report/output/images/desc_MonthlyRevenue_min_boxplot.png
+                # Нам нужен путь относительно report/output, т.е. images/desc_MonthlyRevenue_min_boxplot.png
+                try:
+                    # Находим индекс начала 'images/' в пути
+                    images_idx = filepath.index('images/')
+                    relative_path = filepath[images_idx:]
+                except ValueError:
+                    # Если 'images/' не найден, используем весь путь от report/output
+                    try:
+                        report_idx = filepath.index('report/output/')
+                        relative_path = filepath[report_idx + len('report/output/'):]
+                    except ValueError:
+                        # Если и это не найдено, используем как есть
+                        relative_path = filepath
+                        
+                lines.append(f"![{plot_key}_{plot_type}]({relative_path})")
+    
+    return "\n".join(lines)
+
 
 SUMMARIZER_PROMPT = """
 Ты — эксперт по аналитике. На основе результатов инструментов сгенерируй отчёт.
@@ -238,6 +280,10 @@ SUMMARIZER_PROMPT = """
 {full_model_summary}
 {model_details}
 
+### 9. Инсайт-ориентированные визуализации
+{insight_viz_summary}
+{insight_viz_details}
+
 ## Заключение
 Сформулируй общий вывод на основе всех предыдущих разделов.
 Объясни, какие характеристики и паттерны поведения наиболее сильно отличают группу 1 от группы 0.
@@ -274,6 +320,7 @@ def generate_summary(
     visualization_result = results_map.get("DistributionVisualizer")
     outlier_result = results_map.get("OutlierDetector")
     interaction_result = results_map.get("InteractionAnalyzer")
+    insight_viz_result = results_map.get("InsightDrivenVisualizer") # Новый инструмент
 
     insights_list = "\n".join([f"- {s}" for s in insights]) if insights else "Нет данных"
 
@@ -298,6 +345,9 @@ def generate_summary(
         "interaction_details": _format_interaction_details(interaction_result),
         "full_model_summary": get_summary("FullModelFeatureImportance"),
         "model_details": _format_model_details(model_result),
+        # Новые поля для InsightDrivenVisualizer
+        "insight_viz_summary": get_summary("InsightDrivenVisualizer"),
+        "insight_viz_details": _format_insight_visualization_details(insight_viz_result),
     })
 
     return response.content
