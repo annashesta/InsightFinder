@@ -117,16 +117,10 @@ def run_simple_orchestration(
         }
             
         try:
-<<<<<<< HEAD
             result = executor.run_one_step(tool_name, df=df, target_column=target_column)
 
             logger.info(f"🛠 RAW Executor результат ({tool_name}): {json.dumps(result, ensure_ascii=False)}")
 
-=======
-            result = executor.run_one_step(tool_name, **tool_kwargs)
->>>>>>> c7128fbda115e19dcab69d55c30d66d944d13a79
-            logger.info(f"🚀 Executor выполнил {tool_name}: статус={result['status']}")
-            
             if result["status"] == "error":
                 logger.error(f"❌ Ошибка: {result['error_message']}")
         except Exception as e:

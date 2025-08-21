@@ -38,3 +38,4 @@
 2025-08-20 20:57:16,881 - agents.summarizer_agent - INFO - 📝 Summarizer Agent инициализирован для файла telecom_eda_data.csv
 2025-08-20 21:10:38,712 - agents.summarizer_agent - INFO - 📝 Summarizer Agent инициализирован для файла telecom_eda_data.csv
 >>>>>>> c7128fbda115e19dcab69d55c30d66d944d13a79
+2025-08-21 16:20:28,355 - agents.summarizer_agent - INFO - 📝 Summarizer Agent инициализирован для файла telecom_eda_data.csv
