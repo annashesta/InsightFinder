@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 from core.logger import get_logger
 
 load_dotenv()
-logger = get_logger(__name__)
+logger = get_logger(__name__, "analyst.log")
 
 
 class NextStep(BaseModel):

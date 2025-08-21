@@ -1,7 +1,7 @@
 # agents/executor_agent.py
 from core.logger import get_logger
 
-logger = get_logger(__name__)
+logger = get_logger(__name__, "executor.log")
 
 
 class ExecutorAgent:

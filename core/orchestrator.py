@@ -62,6 +62,13 @@ def run_simple_orchestration(
                 "messages": [HumanMessage(content=question)],
                 "agent_scratchpad": []
             })
+
+            raw_content = getattr(response, "content", None)
+            if raw_content:
+                logger.info(f"🧠 RAW Analyst ответ: {raw_content}")
+            else:
+                logger.info(f"🧠 RAW Analyst ответ (dict): {json.dumps(response, ensure_ascii=False)}")
+
             logger.info(f"✅ Analyst вернул: {response}")
         except Exception as e:
             logger.error(f"❌ Ошибка вызова Analyst: {e}")
@@ -111,7 +118,11 @@ def run_simple_orchestration(
         # === Запуск инструмента ===
         try:
             result = executor.run_one_step(tool_name, df=df, target_column=target_column)
+
+            logger.info(f"🛠 RAW Executor результат ({tool_name}): {json.dumps(result, ensure_ascii=False)}")
+
             logger.info(f"🚀 Executor выполнил {tool_name}: статус={result['status']}")
+            
             if result["status"] == "error":
                 logger.error(f"❌ Ошибка: {result['error_message']}")
         except Exception as e:
