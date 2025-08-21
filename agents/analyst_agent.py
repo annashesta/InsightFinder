@@ -26,7 +26,6 @@ class AnalystResponse(BaseModel):
     next_step: NextStep
 
 
-# === Промпт БЕЗ фигурных скобок и JSON-примеров ===
 # Внимание: тройные фигурные скобки {{{...}}} используются для экранирования JSON-примера
 # в f-string шаблоне LangChain. Это НЕ ошибка.
 ANALYST_SYSTEM_PROMPT = """Ты — опытный аналитик данных. Твоя задача — исследовать различия между двумя группами по бинарной целевой переменной.
@@ -39,7 +38,7 @@ ANALYST_SYSTEM_PROMPT = """Ты — опытный аналитик данных
 1. Начни с PrimaryFeatureFinder — чтобы найти самый важный признак.
 2. Затем используй CorrelationAnalysis и DescriptiveStatsComparator для числовых признаков.
 3. Затем CategoricalFeatureAnalysis для категориальных.
-4. Добавь DistributionVisualizer для визуализации распределений.
+4. Добавь DistributionVisualizer для создания графиков.
 5. Используй OutlierDetector для поиска аномалий.
 6. Примени InteractionAnalyzer для анализа взаимодействий.
 7. В конце — FullModelFeatureImportance для итоговой оценки.
@@ -53,6 +52,7 @@ ANALYST_SYSTEM_PROMPT = """Ты — опытный аналитик данных
 Не запускай один и тот же инструмент дважды.
 Всегда возвращай объект с полями "logic" и "next_step". Никогда не возвращай "tool" и "reason" напрямую без обертки в "next_step".
 """
+
 
 
 def create_analyst_agent(tools: List) -> callable:

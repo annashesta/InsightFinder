@@ -15,4 +15,6 @@ class ExecutorAgent:
 
         tool = self.tools[tool_name]
         logger.info(f"🚀 Запуск инструмента: {tool_name}")
+        
+        # Передаем все доступные kwargs, включая df, target_column и history
         return tool.run(tool_input="", **kwargs)

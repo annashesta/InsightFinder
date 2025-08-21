@@ -11,10 +11,6 @@
 ## 📁 Структура проекта
 
 ```
-
-
-
-
 insightfinder/
 │
 ├── agents/
@@ -34,41 +30,47 @@ insightfinder/
 ├── data/
 │   └── telecom_eda_data.csv          # Пример входных данных (датасет)
 │
-├── logs/ # Папка с логами работы приложения
-│ ├── orchestrator.log
-│ ├── summarizer.log
-│ ├── executor.log
-│ └── analyst.log
+├── logs/                             # Папка с логами работы приложения
+│   ├── orchestrator.log
+│   ├── summarizer.log
+│   └── ...(другие логи)
 │
 ├── report/
 │   ├── output/
-│   │   └── report/output/insightfinder_report_20250820_180628.md     #  ЗДЕСЬ ОТЧЕТ!!!!
+│   │   ├── insightfinder_report_YYYYMMDD_HHMMSS.md  # Финальный отчет
+│   │   └── images/                   # Папка для графиков из отчета
+│   │       ├── desc_*.png
+│   │       ├── corr_*.png
+│   │       └── ...(другие изображения)
 │   └── generate_report.py            # Сохранение отчёта в файл
 │
 ├── tests/
 │   ├── test_tools.py                 # Тесты для инструментов
-│   ├── test_api.py                   # Тесты на подключение к API  python tests/test_api.py   
-│   └── test_edge_cases.py            # Тесты на граничные случаи
+│   ├── test_edge_cases.py            # Тесты на граничные случаи
+│   └── ...(другие тесты)
 │
 ├── ui/ 
 │   └── web_app.py                    # Веб интерфейс
 │
 ├── tools/
 │   ├── __init__.py
-│   ├──  И ТУТ ЕЩЕ 3 нужно вписать
-│   ├── 
-│   ├── 
-│   ├── primary_feature_finder.py     # Поиск главного признака (Decision Tree)
+│   ├── primary_feature_finder.py     # Поиск главного признака (Decision Tree глубины 1)
 │   ├── correlation_analysis.py       # Анализ корреляций (Point-Biserial)
-│   ├── descriptive_stats_comparator.py # Сравнение статистик (mean, median и т.д.)
+│   ├── descriptive_stats_comparator.py # Сравнение описательных статистик между группами
 │   ├── categorical_feature_analysis.py # Анализ категориальных признаков (Хи-квадрат)
-│   └── full_model_importance.py      # Важность признаков (Random Forest)
+│   ├── full_model_importance.py      # Важность признаков (Random Forest)
+│   ├── distribution_visualizer.py    # Создание графиков распределений (boxplot, hist)
+│   ├── outlier_detector.py           # Обнаружение выбросов (IQR, Z-score)
+│   ├── interaction_analyzer.py       # Анализ взаимодействий признаков
+│   └── insight_driven_visualizer.py  # Создание целенаправленных графиков на основе инсайтов
 │
-├── .gitignore                        # Точка входа в приложение
+├── .env                              # Файл с переменными окружения (API ключи)
+├── .gitignore                        # Файл для игнорирования файлов в Git
 ├── main.py                           # Точка входа в приложение
-├── debug_tools.py                    # Проверка работоспособности тулзов
+├── debug_tools.py                    # Скрипт для отладки инструментов
 ├── requirements.txt                  # Зависимости проекта
-└── README.md                         # Этот файл
+└── README.md                         # Описание проекта
+
 ```
 
 ---
