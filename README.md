@@ -11,7 +11,7 @@
 
 ## 💻 Технологический стек
 
-pandas, numpy, scikit-learn, scipy, matplotlib, seaborn, langchain, streamlit
+`pandas, numpy, scikit-learn, scipy, matplotlib, seaborn, langchain, streamlit`
 
 ## 📁 Структура проекта
 
