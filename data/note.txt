@@ -1,2 +1,0 @@
-Папка с тестовыми и примерами CSV-файлов, например 
-https://www.kaggle.com/datasets/mshalankin/telecom-common-dataset/data
