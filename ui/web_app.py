@@ -51,10 +51,10 @@ with st.form("env_form"):
 
 
 file = st.file_uploader("Загрузите CSV-файл", type=["csv"])
-logger.info("✅ Загружен файл через веб-интерфейс.")
 
 st.write("Важно: не пытайтесь изменить файл или таргет, пока идёт текущий анализ. Это может привести к ошибкам.")
 if file:
+    logger.info("✅ Загружен файл через веб-интерфейс.")
     df = pd.read_csv(file)
     st.write("Предпросмотр:", df.head())
 
