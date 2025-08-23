@@ -1,0 +1,32 @@
+2025-08-21 13:37:54,528 - agents.executor_agent - INFO - Executor Agent инициализирован с 8 инструментами
+2025-08-21 13:40:29,762 - agents.executor_agent - INFO - 🚀 Запуск инструмента: PrimaryFeatureFinder
+2025-08-21 13:40:59,103 - agents.executor_agent - INFO - 🚀 Запуск инструмента: CorrelationAnalysis
+2025-08-21 13:41:34,447 - agents.executor_agent - INFO - 🚀 Запуск инструмента: DescriptiveStatsComparator
+2025-08-21 13:42:02,347 - agents.executor_agent - INFO - 🚀 Запуск инструмента: CategoricalFeatureAnalysis
+2025-08-21 13:42:34,616 - agents.executor_agent - INFO - 🚀 Запуск инструмента: DistributionVisualizer
+2025-08-21 13:43:22,047 - agents.executor_agent - INFO - 🚀 Запуск инструмента: DistributionVisualizer
+2025-08-21 13:53:18,564 - agents.executor_agent - INFO - Executor Agent инициализирован с 8 инструментами
+2025-08-21 13:53:40,539 - agents.executor_agent - INFO - 🚀 Запуск инструмента: PrimaryFeatureFinder
+2025-08-21 13:55:02,568 - agents.executor_agent - INFO - 🚀 Запуск инструмента: CorrelationAnalysis
+2025-08-21 13:55:24,756 - agents.executor_agent - INFO - 🚀 Запуск инструмента: DescriptiveStatsComparator
+2025-08-21 13:55:54,800 - agents.executor_agent - INFO - 🚀 Запуск инструмента: CategoricalFeatureAnalysis
+2025-08-21 13:56:30,865 - agents.executor_agent - INFO - 🚀 Запуск инструмента: DistributionVisualizer
+2025-08-21 13:57:19,124 - agents.executor_agent - INFO - 🚀 Запуск инструмента: InteractionAnalyzer
+2025-08-21 13:57:29,327 - agents.executor_agent - INFO - 🚀 Запуск инструмента: FullModelFeatureImportance
+2025-08-21 15:30:59,602 - agents.executor_agent - INFO - Executor Agent инициализирован с 8 инструментами
+2025-08-21 15:31:19,755 - agents.executor_agent - INFO - 🚀 Запуск инструмента: PrimaryFeatureFinder
+2025-08-21 15:32:14,848 - agents.executor_agent - INFO - 🚀 Запуск инструмента: CorrelationAnalysis
+2025-08-21 15:32:50,324 - agents.executor_agent - INFO - 🚀 Запуск инструмента: DescriptiveStatsComparator
+2025-08-21 15:33:17,990 - agents.executor_agent - INFO - 🚀 Запуск инструмента: CategoricalFeatureAnalysis
+2025-08-21 15:33:48,761 - agents.executor_agent - INFO - 🚀 Запуск инструмента: DistributionVisualizer
+2025-08-21 15:35:23,421 - agents.executor_agent - INFO - 🚀 Запуск инструмента: OutlierDetector
+2025-08-21 15:35:31,738 - agents.executor_agent - INFO - 🚀 Запуск инструмента: FullModelFeatureImportance
+2025-08-21 16:15:07,335 - agents.executor_agent - INFO - Executor Agent инициализирован с 8 инструментами
+2025-08-21 16:16:07,751 - agents.executor_agent - INFO - 🚀 Запуск инструмента: PrimaryFeatureFinder
+2025-08-21 16:17:01,013 - agents.executor_agent - INFO - 🚀 Запуск инструмента: CorrelationAnalysis
+2025-08-21 16:17:30,081 - agents.executor_agent - INFO - 🚀 Запуск инструмента: DescriptiveStatsComparator
+2025-08-21 16:18:06,264 - agents.executor_agent - INFO - 🚀 Запуск инструмента: CategoricalFeatureAnalysis
+2025-08-21 16:18:39,802 - agents.executor_agent - INFO - 🚀 Запуск инструмента: DistributionVisualizer
+2025-08-21 16:19:04,420 - agents.executor_agent - INFO - 🚀 Запуск инструмента: OutlierDetector
+2025-08-21 16:19:34,086 - agents.executor_agent - INFO - 🚀 Запуск инструмента: InteractionAnalyzer
+2025-08-21 16:19:58,482 - agents.executor_agent - INFO - 🚀 Запуск инструмента: FullModelFeatureImportance
