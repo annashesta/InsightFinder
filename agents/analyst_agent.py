@@ -78,7 +78,7 @@ def create_analyst_agent(tools: List) -> callable:
     ]).partial(format_instructions=parser.get_format_instructions())
 
     llm = ChatOpenAI(
-        model="qwen2.5-32b-instruct",
+        model=os.getenv("OPENAI_MODEL"),
         api_key=os.getenv("OPENAI_API_KEY"),
         base_url=os.getenv("OPENAI_BASE_URL"),
         temperature=0.3,
