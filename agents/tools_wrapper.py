@@ -188,6 +188,6 @@ ALL_TOOLS = [
     FullModelFeatureImportanceTool(),
     DistributionVisualizerTool(),
     OutlierDetectorTool(),
-    InteractionAnalyzerTool(),
-    # InsightDrivenVisualizerTool(),
+    InteractionAnalyzerTool()
+    # InsightDrivenVisualizerTool()
 ]

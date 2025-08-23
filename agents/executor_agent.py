@@ -1,5 +1,6 @@
 # agents/executor_agent.py
 from core.logger import get_logger
+from core.utils import make_serializable
 
 logger = get_logger(__name__, "executor.log")
 
@@ -17,4 +18,16 @@ class ExecutorAgent:
         logger.info(f"🚀 Запуск инструмента: {tool_name}")
         
         # Передаем все доступные kwargs, включая df, target_column и history
-        return tool.run(tool_input="", **kwargs)
+        try:
+            result = tool.run(tool_input="", **kwargs)
+            logger.info(f"✅ Инструмент {tool_name} успешно выполнен")
+        except Exception as e:
+            logger.error(f"❌ Ошибка при выполнении инструмента {tool_name}: {e}")
+            result = {
+                "tool_name": tool_name,
+                "status": "error",
+                "summary": "",
+                "details": {},
+                "error_message": str(e)
+            }
+        return make_serializable(result)

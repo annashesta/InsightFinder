@@ -3,18 +3,26 @@ import pandas as pd
 import numpy as np
 
 
+# core/utils.py
+
 def make_serializable(obj):
     if isinstance(obj, dict):
         return {k: make_serializable(v) for k, v in obj.items()}
     elif isinstance(obj, list):
         return [make_serializable(i) for i in obj]
-    elif isinstance(obj, (np.integer, int)):
+    elif isinstance(obj, tuple):
+        return tuple(make_serializable(i) for i in obj)
+    elif isinstance(obj, set):
+        return [make_serializable(i) for i in obj]
+    elif isinstance(obj, np.integer):  
         return int(obj)
-    elif isinstance(obj, (np.floating, float)):
+    elif isinstance(obj, np.floating):  
         return float(obj)
+    elif isinstance(obj, np.ndarray):
+        return make_serializable(obj.tolist())
     elif pd.isna(obj):
         return None
-    elif isinstance(obj, (str, bool)) or obj is None:
+    elif isinstance(obj, (str, int, float, bool)) or obj is None:
         return obj
     else:
         return str(obj)
