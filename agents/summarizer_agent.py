@@ -312,7 +312,7 @@ def generate_summary(
     logger.info(f"📝 Summarizer Agent инициализирован для файла {filename}")
 
     llm = ChatOpenAI(
-        model="qwen2.5-32b-instruct",
+        model=os.getenv("OPENAI_MODEL"),
         api_key=os.getenv("OPENAI_API_KEY"),
         base_url=os.getenv("OPENAI_BASE_URL"),
         temperature=0.3
