@@ -85,11 +85,20 @@ def descriptive_stats_comparator(
         diffs.sort(key=lambda x: x['relative_difference'], reverse=True)
         top_diffs = diffs[:top_k]
 
-        if not top_diffs:
+        significant_differences = {
+            d["feature_stat"]: {
+                "group_0": d["group_0"],
+                "group_1": d["group_1"],
+                "relative_difference": d["relative_difference"],
+            }
+            for d in top_diffs
+        }
+
+        if not significant_differences:
             summary = f"Нет значимых различий > {threshold_ratio*100:.0f}%"
         else:
-            count = len(top_diffs)
-            top_feature_stat = top_diffs[0]['feature_stat']
+            count = len(significant_differences)
+            top_feature_stat = next(iter(significant_differences.keys()))
             summary = f"Найдено {count} значимых различий. Топ-1: '{top_feature_stat}'."
 
         return {
@@ -98,8 +107,8 @@ def descriptive_stats_comparator(
             "summary": summary,
             "details": {
                 "threshold_ratio": threshold_ratio,
-                "significant_differences": top_diffs, # Возвращаем список словарей, отсортированный
-                "n_features_with_diff": len(diffs),
+                "significant_differences": significant_differences, # Возвращаем список словарей, отсортированный
+                "n_features_with_diff": len(significant_differences),
             },
             "error_message": None,
         }

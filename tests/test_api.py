@@ -1,74 +1,65 @@
-# test_api.py
-import requests
+# tests/test_api.py
 import os
+import pytest
+import requests
 from dotenv import load_dotenv
+from pathlib import Path
 
-# Загружаем переменные из .env
-load_dotenv()
+# Пытаемся загрузить .env только если файл существует
+env_path = Path('.env')
+if env_path.exists():
+    load_dotenv()
+else:
+    API_KEY = None
+    BASE_URL = None
 
-# Настройки
+# Получаем значения из переменных окружения
 API_KEY = os.getenv("OPENAI_API_KEY")
 BASE_URL = os.getenv("OPENAI_BASE_URL")
 MODEL = "qwen2.5-32b-instruct"
 
-# Проверка, что переменные загружены
-if not API_KEY:
-    print("❌ Ошибка: OPENAI_API_KEY не найден в .env")
-    exit(1)
-if not BASE_URL:
-    print("❌ Ошибка: OPENAI_BASE_URL не найден в .env")
-    exit(1)
-
-# URL для теста
-url = f"{BASE_URL}/models"
-
-# Заголовки
-headers = {
-    "Authorization": f"Bearer {API_KEY}",
-    "Content-Type": "application/json"
+HEADERS = {
+    "Authorization": f"Bearer {API_KEY}" if API_KEY else "",
+    "Content-Type": "application/json",
 }
 
-print("🔍 Проверка доступа к API...")
 
-# --- Тест 1: Получить список моделей ---
-print("\n1. Запрос к /models...")
-try:
-    response = requests.get(url, headers=headers, timeout=10)
-    if response.status_code == 200:
-        models = response.json()
-        print("✅ Успешно! Доступные модели:")
-        for model in models.get("data", []):
-            print(f"  - {model['id']}")
-        if MODEL in [m['id'] for m in models.get("data", [])]:
-            print(f"✅ Модель '{MODEL}' доступна!")
-        else:
-            print(f"⚠️  Модель '{MODEL}' НЕ найдена в списке.")
-    else:
-        print(f"❌ Ошибка: {response.status_code} — {response.text}")
-except Exception as e:
-    print(f"❌ Не удалось подключиться к {BASE_URL}: {str(e)}")
+@pytest.fixture(autouse=True)
+def check_env():
+    """Проверка наличия ключа и URL перед тестами API"""
+    if not env_path.exists():
+        pytest.skip("❌ Файл .env не найден")
+    if not API_KEY or not BASE_URL:
+        pytest.skip("❌ Переменные окружения OPENAI_API_KEY / OPENAI_BASE_URL не заданы")
 
-# --- Тест 2: Простой chat.completions запрос ---
-print("\n2. Тестовый запрос к /chat/completions...")
-try:
-    response = requests.post(
-        f"{BASE_URL}/chat/completions",
-        headers=headers,
-        json={
-            "model": MODEL,
-            "messages": [{"role": "user", "content": "Привет! Работаешь?"}],
-            "max_tokens": 10
-        },
-        timeout=15
-    )
-    if response.status_code == 200:
-        result = response.json()
-        print("✅ Запрос выполнен успешно!")
-        print("Ответ:", result["choices"][0]["message"]["content"].strip())
-    elif response.status_code == 400:
-        print(f"❌ 400 Bad Request: {response.text}")
-        print("💡 Это может означать, что функция вызова тулзов не включена на сервере.")
-    else:
-        print(f"❌ Ошибка {response.status_code}: {response.text}")
-except Exception as e:
-    print(f"❌ Ошибка запроса: {str(e)}")
+
+def test_list_models():
+    """Проверяем, что API возвращает список моделей"""
+    url = f"{BASE_URL}/models"
+    response = requests.get(url, headers=HEADERS, timeout=10)
+
+    assert response.status_code == 200, f"Ошибка {response.status_code}: {response.text}"
+
+    data = response.json()
+    assert "data" in data, "Ответ API не содержит ключ 'data'"
+
+    models = [m["id"] for m in data["data"]]
+    assert models, "Список моделей пуст"
+    assert MODEL in models, f"Модель '{MODEL}' не найдена в списке"
+
+
+def test_chat_completion():
+    """Проверяем базовый запрос к /chat/completions"""
+    url = f"{BASE_URL}/chat/completions"
+    payload = {
+        "model": MODEL,
+        "messages": [{"role": "user", "content": "Привет! Работаешь?"}],
+        "max_tokens": 10,
+    }
+
+    response = requests.post(url, headers=HEADERS, json=payload, timeout=15)
+    assert response.status_code == 200, f"Ошибка {response.status_code}: {response.text}"
+
+    result = response.json()
+    assert "choices" in result, "Нет поля 'choices' в ответе"
+    assert result["choices"][0]["message"]["content"], "Ответ пустой"
