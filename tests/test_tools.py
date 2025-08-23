@@ -160,9 +160,19 @@ def test_descriptive_stats_comparator_success(sample_df):
     check_tool_output(result, "DescriptiveStatsComparator")
     if result["status"] == "success":
         d = result["details"]
-        assert "significant_differences" in d and isinstance(d["significant_differences"], dict)
+        assert "significant_differences" in d and isinstance(d["significant_differences"], list)
+        # Проверим, что список не пустой и элементы являются словарями
+        assert len(d["significant_differences"]) > 0
+        assert all(isinstance(item, dict) for item in d["significant_differences"])
+        # Проверим наличие ключей в каждом элементе списка (пример для первого элемента)
+        first_diff = d["significant_differences"][0]
+        assert "feature_stat" in first_diff
+        assert "group_0" in first_diff
+        assert "group_1" in first_diff
+        assert "relative_difference" in first_diff
         assert "n_features_with_diff" in d
     print("✅ DescriptiveStatsComparator: success")
+
 
 def test_descriptive_stats_comparator_no_numeric(sample_df):
     df = sample_df[["region", "loyalty", "is_premium"]].copy()
