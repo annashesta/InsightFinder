@@ -7,7 +7,9 @@ import seaborn as sns
 from pathlib import Path
 from typing import Dict, Any, List
 from sklearn.preprocessing import LabelEncoder
+from core.logger import get_logger
 
+logger = get_logger(__name__, "orchestrator.log")
 
 def _safe_feature_name(name: str) -> str:
     """Создает безопасное имя файла из названия признака."""
