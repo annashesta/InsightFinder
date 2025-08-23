@@ -12,27 +12,38 @@ from core.logger import get_logger
 
 logger = get_logger(__name__, "orchestrator.log")
 
+try:
+    st.image("insightFinderLogo.png", width=600)
+except Exception as e:
+    # Если файл не найден, просто продолжаем
+    logger.debug(f"Логотип не найден или не может быть загружен: {e}")
+    # st.title("InsightFinder — AI агент для анализа данных")
+
+# Основной заголовок
+st.title("InsightFinder — AI агент для анализа данных")
+
 def clear_tmp_directory():
     """Очищает временную директорию tmp"""
     try:
-        for file in os.listdir("tmp"):
-            file_path = os.path.join("tmp", file)
-            try:
-                if os.path.isfile(file_path):
-                    os.unlink(file_path)
-            except Exception as e:
-                st.error(f"Ошибка при удалении {file_path}: {e}")
+        tmp_dir = "tmp"
+        if os.path.exists(tmp_dir):
+            for file in os.listdir(tmp_dir):
+                file_path = os.path.join(tmp_dir, file)
+                try:
+                    if os.path.isfile(file_path):
+                        os.unlink(file_path)
+                except Exception as e:
+                    st.error(f"Ошибка при удалении {file_path}: {e}")
     except Exception as e:
         st.error(f"Ошибка при очистке tmp: {e}")
 
-
-st.title("InsightFinder — AI агент для анализа данных")
 
 st.subheader("⚙️ Настройки API")
 st.write("Важно: неверный или отсутствующий ключ приведёт к ошибкам.")
 with st.form("env_form"):
     api_key = st.text_input("Введите OPENAI_API_KEY", type="password")
     base_url = st.text_input("Введите OPENAI_BASE_URL", value="https://openai-hub.neuraldeep.tech")
+    model_name = st.text_input("Введите OPENAI_MODEL", value="qwen2.5-32b-instruct") # Значение по умолчанию
 
     submitted = st.form_submit_button("Сохранить настройки")
 
@@ -40,14 +51,15 @@ with st.form("env_form"):
         with open(".env", "w", encoding="utf-8") as f:
             f.write(f"OPENAI_API_KEY={api_key}\n")
             f.write(f"OPENAI_BASE_URL={base_url}\n")
+            f.write(f"OPENAI_MODEL={model_name}\n")
         
         st.success("✅ Файл .env успешно создан!")
-        logger.info("✅ Установлены новые переменные окружения (API) из формы.")
+        logger.info("✅ Установлены новые переменные окружения (API и MODEL) из формы.")
 
         # чтобы сразу подхватить в текущем приложении
         os.environ["OPENAI_API_KEY"] = api_key
         os.environ["OPENAI_BASE_URL"] = base_url
-
+        os.environ["OPENAI_MODEL"] = model_name
 
 
 file = st.file_uploader("Загрузите CSV-файл", type=["csv"])
@@ -58,34 +70,58 @@ if file:
     df = pd.read_csv(file)
     st.write("Предпросмотр:", df.head())
 
-    target_col = st.selectbox("Выберите таргет", df.columns)
+    target_col = st.selectbox("Выберите таргет", sorted(df.columns))
     
     st.write("Важно: не пытайтесь начать новый анализ, пока идёт текущий. Это может привести к ошибкам.")
-    if st.button("Запустить анализ"):
-        os.makedirs("tmp", exist_ok=True)
-        tmp_path = os.path.join("tmp", file.name)
-
-        with open(tmp_path, "wb") as f:
-            f.write(file.getbuffer())
-
-        # создаём "плейсхолдер" для статуса
-        status_placeholder = st.empty()
-        status_placeholder.info("⏳ Анализ запущен...")
-
+    
+    def is_binary_column(series):
+        """Проверяет, является ли серия бинарной (содержит только 2 уникальных значения)."""
         try:
-            report_path, history, report = analyze_dataset(tmp_path, target_col)
+            # Удаляем NaN, если они есть
+            unique_values = series.dropna().unique()
+            # Проверяем, что уникальных значений ровно 2
+            if len(unique_values) != 2:
+                return False, []
+            
+            # Дополнительно можно проверить, являются ли значения 0/1, True/False, Yes/No и т.п.
+            # Но для простоты ограничимся количеством уникальных значений.
+            return True, unique_values.tolist()
+        except Exception:
+            return False, []
 
-            # сохраняем в сессию
-            st.session_state["report"] = report
-            st.session_state["report_path"] = report_path
-            st.session_state["history"] = history
+    if st.button("Запустить анализ"):
+        # Проверка на бинарность
+        is_binary, unique_vals = is_binary_column(df[target_col])
+        if not is_binary:
+            st.error(f"❌ Выбранный столбец '{target_col}' не является бинарным. "
+                     f"Пожалуйста, выберите столбец с ровно двумя уникальными значениями.")
+            logger.warning(f"❌ Попытка запуска анализа с не бинарным таргетом '{target_col}'. "
+                          f"Уникальные значения: {unique_vals}")
+        else:
+            # Если таргет бинарный, продолжаем анализ 
+            os.makedirs("tmp", exist_ok=True)
+            tmp_path = os.path.join("tmp", file.name)
 
-        finally:
-            status_placeholder.empty()
-            # Очищаем временную директорию после завершения
-            clear_tmp_directory()
-            logger.info("✅ Временная директория tmp очищена.")
+            with open(tmp_path, "wb") as f:
+                f.write(file.getbuffer())
 
+            # создаём "плейсхолдер" для статуса
+            status_placeholder = st.empty()
+            status_placeholder.info("⏳ Анализ запущен...")
+
+            try:
+                report_path, history, report = analyze_dataset(tmp_path, target_col)
+
+                # сохраняем в сессию
+                st.session_state["report"] = report
+                st.session_state["report_path"] = report_path
+                st.session_state["history"] = history
+
+            finally:
+                status_placeholder.empty()
+                # Очищаем временную директорию после завершения
+                clear_tmp_directory()
+                logger.info("✅ Временная директория tmp очищена.")
 
 
 # показываем отчет и кнопку скачивания, если они есть
@@ -104,7 +140,7 @@ if "report" in st.session_state:
     if "history" in st.session_state:
         image_paths = []
     
-        # инструмент DistributionVisualizer и InsightDrivenVisualizer
+        # инструмент DistributionVisualizer
         for step in st.session_state["history"]:
             if step["tool_name"] == "DistributionVisualizer" and step["status"] == "success":
                 visualizations = step["details"].get("visualizations", {})
@@ -123,33 +159,39 @@ if "report" in st.session_state:
                         # Отображаем изображение
                         st.image(img_bytes, use_container_width=True)
 
+        # Логика для InsightDrivenVisualizer
         for step in st.session_state["history"]:
             if step["tool_name"] == "InsightDrivenVisualizer" and step["status"] == "success":
                 saved_plots = step["details"].get("saved_plots", {})
                 if saved_plots:
                     st.subheader("💡 Инсайт-визуализации")
                 
-                    for feature, plot_info in saved_plots.items():
-                        st.markdown(f"### {feature}")
-                        st.markdown(plot_info.get("description", ""))
-                    
-                        # Обработка различных типов графиков
-                        for plot_type, path in plot_info.items():
-                            if plot_type != "description":  # Пропускаем поле description
-                                if isinstance(path, str) and os.path.exists(path):
-                                    image_paths.append(path)
-                                    with open(path, 'rb') as img_file:
-                                        image_bytes = img_file.read()
-                                        st.image(image_bytes, use_container_width=True)
+                    images_dir = "report/output/images/"
+                    if os.path.exists(images_dir):
+                        for root, dirs, files in os.walk(images_dir):
+                            for file in files:
+                                if file.lower().endswith(('.png', '.jpg', '.jpeg')):
+                                    img_path = os.path.join(root, file)
+                                    image_paths.append(img_path)
+                                    # Отображаем изображение
+                                    st.image(img_path, caption=file, use_container_width=True)
+
 
     # Создаем ZIP-архив со всеми графиками
         if image_paths:
+            # Убираем дубликаты, если они есть
+            image_paths = list(set(image_paths)) 
             st.markdown(f"### 📥 Всего графиков: {len(image_paths)}")
             zip_buffer = io.BytesIO()
             with zipfile.ZipFile(zip_buffer, 'w') as zip_file:
                 for img_path in image_paths:
-                    filename = os.path.basename(img_path)
-                    zip_file.write(img_path, filename)
+                    # Имя файла в архиве без полного пути
+                    arcname = os.path.relpath(img_path, "report/output") 
+                    # Убедимся, что файл существует перед добавлением
+                    if os.path.exists(img_path):
+                         zip_file.write(img_path, arcname)
+                    else:
+                         logger.warning(f"Файл изображения не найден при создании ZIP: {img_path}")
         
             zip_buffer.seek(0)
             st.download_button(
@@ -173,3 +215,4 @@ if "report" in st.session_state:
                     mime="text/plain"
                 )
     logger.info("✅ Выведен финальный отчет")
+
