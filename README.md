@@ -105,6 +105,7 @@ pip install -r requirements.txt
 
 OPENAI_API_KEY=ваш_api_ключ
 OPENAI_BASE_URL=[https://api.openai.com/v1](https://api.openai.com/v1) # или ваш приватный эндпоинт
+OPENAI_MODEL=название_модели
 
 ---
 
