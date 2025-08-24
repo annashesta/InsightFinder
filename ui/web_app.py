@@ -10,14 +10,31 @@ import io
 import zipfile
 from core.logger import get_logger
 
+try:
+    from openai import OpenAI
+    OPENAI_AVAILABLE = True
+except ImportError:
+    OPENAI_AVAILABLE = False
+    st.warning("Библиотека 'openai' не установлена. Установите её для функции выбора модели: `pip install openai`")
+
+
 logger = get_logger(__name__, "orchestrator.log")
 
 
+# CSS для улучшения печати и центрирования логотипа
 st.markdown(
     """
     <style>
+    /* Центрирование логотипа */
+    .logo-container {
+        display: flex;
+        justify-content: center;
+        width: 100%;
+        margin-bottom: 1rem;
+    }
+    
     @media print {
-        /* Применяется только при печати/сохранлении в PDF */
+        /* Применяется только при печати/сохранении в PDF */
         
         /* Предотвращаем разрывы страниц внутри изображений и их подписей */
         .element-container:has(> img), /* Контейнер изображения Streamlit */
@@ -34,7 +51,7 @@ st.markdown(
         }
 
         /* Дополнительно: можно немного уменьшить изображения для печати, если они велики */
-        /* .stImage img { max-width: 95%; } */
+        /* .stImage img { max-width: 90%; } */
         
         /* Дополнительно: убедиться, что подписи остаются с изображением */
         /* .stImage + div { page-break-before: avoid; break-before: avoid; } */
@@ -45,15 +62,12 @@ st.markdown(
 )
 
 
-try:
-    st.image("insightFinderLogo.png", width=600)
-except Exception as e:
-    # Если файл не найден, просто продолжаем
-    logger.debug(f"Логотип не найден или не может быть загружен: {e}")
-    # st.title("InsightFinder — AI агент для анализа данных")
 
-# Основной заголовок
+st.markdown('<div class="logo-container">', unsafe_allow_html=True)
+st.image("insightFinderLogo.png", width=600)
+st.markdown('</div>', unsafe_allow_html=True)
 st.title("InsightFinder — AI агент для анализа данных")
+# Основной заголовок
 
 def clear_tmp_directory():
     """Очищает временную директорию tmp"""
@@ -71,20 +85,101 @@ def clear_tmp_directory():
         st.error(f"Ошибка при очистке tmp: {e}")
 
 
+
 st.subheader("⚙️ Настройки API")
 st.write("Важно: неверный или отсутствующий ключ приведёт к ошибкам.")
-with st.form("env_form"):
-    api_key = st.text_input("Введите OPENAI_API_KEY", type="password")
-    base_url = st.text_input("Введите OPENAI_BASE_URL", value="https://openai-hub.neuraldeep.tech  ")
-    model_name = st.text_input("Введите OPENAI_MODEL", value="qwen2.5-32b-instruct") # Значение по умолчанию
 
-    submitted = st.form_submit_button("Сохранить настройки")
+# ИЗМЕНЕНО: Используем session_state для хранения временных значений
+# Инициализируем session_state один раз в начале скрипта или здесь, если ещё не инициализирован
+if "available_models" not in st.session_state:
+    st.session_state["available_models"] = []
+if "selected_model" not in st.session_state:
+    # Используем значение из .env или значение по умолчанию
+    st.session_state["selected_model"] = os.getenv("OPENAI_MODEL", "qwen2.5-32b-instruct")
+# Также храним API ключ и URL в session_state для доступа внутри формы
+if "tmp_api_key" not in st.session_state:
+    st.session_state["tmp_api_key"] = os.getenv("OPENAI_API_KEY", "")
+if "tmp_base_url" not in st.session_state:
+    st.session_state["tmp_base_url"] = os.getenv("OPENAI_BASE_URL", "https://openai-hub.neuraldeep.tech")
+
+with st.form("env_form"):
+    api_key = st.text_input(
+        "Введите OPENAI_API_KEY", 
+        type="password", 
+        key="api_key_input",
+        value=st.session_state["tmp_api_key"] # Используем значение из session_state
+    )
+    # Обновляем session_state при каждом изменении
+    st.session_state["tmp_api_key"] = api_key 
+
+    base_url = st.text_input(
+        "Введите OPENAI_BASE_URL", 
+        value=st.session_state["tmp_base_url"], # Используем значение из session_state
+        key="base_url_input"
+    )
+    # Обновляем session_state при каждом изменении
+    st.session_state["tmp_base_url"] = base_url
+
+    # Кнопка внутри формы, но не является Submit кнопкой
+    fetch_models_clicked = st.form_submit_button("🔄 Получить список моделей")
+    
+    # Логика получения моделей внутри формы
+    if fetch_models_clicked:
+        if not api_key or not base_url:
+             st.error("❌ Пожалуйста, введите API ключ и URL.")
+        else:
+            if OPENAI_AVAILABLE:
+                try:
+                    # Используем значения напрямую из виджетов внутри формы
+                    client = OpenAI(api_key=api_key, base_url=base_url.rstrip('/') + "/v1")
+                    models_response = client.models.list()
+                    model_ids = [model.id for model in models_response.data]
+                    if model_ids:
+                        st.session_state["available_models"] = sorted(model_ids)
+                        # Если текущая выбранная модель не в списке, сбрасываем
+                        if st.session_state["selected_model"] not in model_ids:
+                            st.session_state["selected_model"] = model_ids[0]
+                        st.success(f"✅ Получен список из {len(model_ids)} моделей.")
+                        # st.rerun() внутри формы может быть нестабильным, 
+                        # поэтому обновляем UI на следующей итерации
+                    else:
+                        st.warning("⚠️ Список моделей пуст.")
+                except Exception as e:
+                    st.error(f"❌ Ошибка при получении списка моделей: {e}")
+            else:
+                st.error("❌ Библиотека 'openai' не установлена.")
+
+    # Поле выбора модели из списка или поле ввода, если список пуст/еще не загружен
+    if st.session_state["available_models"]:
+        # Если список моделей загружен, показываем selectbox
+        selected_model = st.selectbox(
+            "Выберите OPENAI_MODEL",
+            options=st.session_state["available_models"],
+            index=st.session_state["available_models"].index(st.session_state["selected_model"]) if st.session_state["selected_model"] in st.session_state["available_models"] else 0,
+            key="model_selectbox"
+        )
+        # Обновляем session_state при выборе
+        st.session_state["selected_model"] = selected_model
+    else:
+        # Если список еще не загружен, показываем text_input
+        selected_model = st.text_input(
+            "Введите OPENAI_MODEL", 
+            value=st.session_state["selected_model"], 
+            key="model_text_input"
+        )
+        # Обновляем session_state при вводе
+        st.session_state["selected_model"] = selected_model
+
+    submitted = st.form_submit_button("💾 Сохранить настройки")
 
     if submitted:
+        # Сохраняем выбранную модель из selectbox/text_input
+        model_to_save = selected_model
+        
         with open(".env", "w", encoding="utf-8") as f:
             f.write(f"OPENAI_API_KEY={api_key}\n")
             f.write(f"OPENAI_BASE_URL={base_url}\n")
-            f.write(f"OPENAI_MODEL={model_name}\n")
+            f.write(f"OPENAI_MODEL={model_to_save}\n") # Используем выбранную модель
         
         st.success("✅ Файл .env успешно создан!")
         logger.info("✅ Установлены новые переменные окружения (API и MODEL) из формы.")
@@ -92,7 +187,8 @@ with st.form("env_form"):
         # чтобы сразу подхватить в текущем приложении
         os.environ["OPENAI_API_KEY"] = api_key
         os.environ["OPENAI_BASE_URL"] = base_url
-        os.environ["OPENAI_MODEL"] = model_name
+        os.environ["OPENAI_MODEL"] = model_to_save # Используем выбранную модель
+
 
 
 file = st.file_uploader("Загрузите CSV-файл", type=["csv"])
@@ -159,8 +255,9 @@ if file:
 
 # показываем отчет и кнопку скачивания, если они есть
 if "report" in st.session_state:
+    st.subheader("📑 Итоговый отчёт")
     st.markdown(st.session_state["report"], unsafe_allow_html=True)
-    
+
     image_paths = [] # Инициализируем список заранее
 
     # Визуализации, если они есть
@@ -225,7 +322,8 @@ if "report" in st.session_state:
                                     # Отображаем изображение
                                     st.image(img_path, caption=" | ".join(caption_parts), use_container_width=True)
 
-    st.subheader("📑 Итоговый отчёт")
+    # Кнопка скачивания отчета 
+    st.subheader("📥 Скачать отчёт")
     with open(st.session_state["report_path"], "r", encoding="utf-8") as f:
         st.download_button(
             label="📥 Скачать отчёт (.md)",
@@ -233,7 +331,7 @@ if "report" in st.session_state:
             file_name=os.path.basename(st.session_state["report_path"]),
             mime="text/markdown"
         )
-        
+
     # Создаем ZIP-архив со всеми графиками
     if image_paths:
         # Убираем дубликаты, если они есть
@@ -272,3 +370,9 @@ if "report" in st.session_state:
                     mime="text/plain"
                 )
     logger.info("✅ Выведен финальный отчет")
+
+    st.markdown("---") # Разделитель
+    st.markdown(
+        "**Чтобы сохранить отчет в PDF:** Нажмите ⋮ (три точки)"
+        "в правом верхнем углу и выберите 'Print', или нажмите `Ctrl+P`."
+    )
