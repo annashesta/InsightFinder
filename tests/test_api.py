@@ -16,7 +16,7 @@ else:
 # Получаем значения из переменных окружения
 API_KEY = os.getenv("OPENAI_API_KEY")
 BASE_URL = os.getenv("OPENAI_BASE_URL")
-MODEL = "qwen2.5-32b-instruct"
+MODEL = os.getenv("OPENAI_MODEL")
 
 HEADERS = {
     "Authorization": f"Bearer {API_KEY}" if API_KEY else "",
