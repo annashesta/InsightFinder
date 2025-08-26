@@ -287,14 +287,33 @@ def save_html_report(html_content: str) -> str:
 
 
 def build_interface():
-    with gr.Blocks(title="InsightFinder", theme=gr.themes.Default()) as demo:
-        gr.Markdown(
-            "# InsightFinder — AI агент для анализа данных\n\n"
-            "> 🌞 *Рекомендуем внизу страницы зайти в настройки и перевести оформление в режим Light*"
-        )
+    with gr.Blocks(title="InsightFinder", theme=gr.themes.Soft()) as demo:
+        
+        # --- Заголовок с логотипом справа ---
+        with gr.Row(elem_id="header-row"): # Используем Row для горизонтального размещения
+            with gr.Column(scale=4): # Занимает 4/5 ширины
+                gr.Markdown("# InsightFinder — AI агент для анализа данных")
+                # Рекомендация по теме
+                gr.Markdown(
+                    "> 🌞 *Важно:* Для корректного отображения отчетов рекомендуем в настройках "
+                    "(внизу страницы) выбрать тему оформления Light. "
+                    "При использовании темной темы некоторые элементы отчета могут быть невидимы."
+                )
+            with gr.Column(scale=1, min_width=100): # Занимает 1/5 ширины, минимум 100px
+                gr.Image(
+                    "insightFinderLogo.png", 
+                    label="", # Без подписи
+                    show_label=False,
+                    container=False, # Без рамки
+                    height=80, # Высота изображения
+                    interactive=False, # Не для взаимодействия
+                    show_download_button=False # Без кнопки скачивания
+                )
 
         report_text_state = gr.State("")
         history_state = gr.State("")
+        report_html_state = gr.State("")
+        report_html_download_state = gr.State("")
 
         with gr.Tab("Анализ"):
             with gr.Row():
