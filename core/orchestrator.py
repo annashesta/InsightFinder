@@ -18,8 +18,7 @@ logger = get_logger(__name__, "orchestrator.log")
 def run_simple_orchestration(
     df: pd.DataFrame, 
     target_column: str, 
-    filename: str = "data.csv"
-) -> Tuple[List[Dict[str, Any]], str]:
+    filename: str = "data.csv" ) -> Tuple[List[Dict[str, Any]], str]:
     """
     Основной оркестратор: работает с JsonOutputParser.
     
@@ -173,8 +172,7 @@ def run_simple_orchestration(
         logger.info(f"✅ InsightDrivenVisualizer выполнен: статус={insight_result['status']}")
     except Exception as e:
         logger.error(f"❌ Ошибка при автоматическом запуске InsightDrivenVisualizer: {e}")
-        # Можно добавить фейковый результат об ошибке, если нужно
-        # history.append({...})
+
 
     # Генерация отчёта
     logger.info("📝 Генерация итогового отчёта")

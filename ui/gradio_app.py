@@ -19,10 +19,8 @@ from core.pipeline import analyze_dataset
 from core.logger import get_logger
 from core.utils import find_binary_target
 
-# --- Импорт OpenAI ---
 try:
     from openai import OpenAI
-
     OPENAI_AVAILABLE = True
 except ImportError:
     OPENAI_AVAILABLE = False
@@ -34,136 +32,7 @@ except ImportError:
 logger = get_logger(__name__, "gradio_app.log")
 
 
-# --- Обработка изображений ---
-class MarkdownImageProcessor:
-    """Обрабатывает Markdown, находя изображения и встраивая их как base64."""
-
-    def __init__(self, base_images_dir: str = "report/output/images"):
-        """
-        Инициализирует процессор.
-
-        Args:
-            base_images_dir: Базовая директория для поиска изображений.
-        """
-        self.base_images_dir = Path(base_images_dir).resolve()
-        logger.debug(
-            f"MarkdownImageProcessor инициализирован с base_images_dir: "
-            f"{self.base_images_dir}"
-        )
-
-    def _image_to_base64(self, image_path: Path) -> Optional[str]:
-        """
-        Читает изображение и возвращает его в виде строки base64.
-
-        Args:
-            image_path: Путь к файлу изображения.
-
-        Returns:
-            Строка данных изображения в формате base64 или None в случае ошибки.
-        """
-        try:
-            if not image_path.exists():
-                logger.warning(f"Файл изображения не найден: {image_path}")
-                return None
-
-            suffix = image_path.suffix.lower()
-            if suffix == ".png":
-                mime_type = "image/png"
-            elif suffix in [".jpg", ".jpeg"]:
-                mime_type = "image/jpeg"
-            elif suffix == ".gif":
-                mime_type = "image/gif"
-            else:
-                logger.warning(
-                    f"Неподдерживаемый формат изображения: {suffix} "
-                    f"для файла {image_path}"
-                )
-                return None
-
-            with open(image_path, "rb") as image_file:
-                encoded_string = base64.b64encode(image_file.read()).decode("utf-8")
-            return f"data:{mime_type};base64,{encoded_string}"
-        except Exception as e:
-            logger.error(
-                f"Ошибка при кодировании изображения {image_path} в base64: {e}"
-            )
-            return None
-
-    def process_markdown(self, markdown_content: str) -> Tuple[str, List]:
-        """
-        Обрабатывает Markdown, находя изображения, кодируя их в base64 и
-        заменяя ссылки на HTML-теги <img>. Если файл не найден, ссылка удаляется.
-
-        Args:
-            markdown_content: Исходный Markdown текст.
-
-        Returns:
-            Кортеж из (обработанный HTML/Markdown текст, пустой список).
-            Второй элемент для совместимости.
-        """
-        images_found_for_gallery = []
-
-        def replace_image_tag(match):
-            alt_text = match.group(1).strip()
-            img_path_str = match.group(2).strip()
-            logger.debug(
-                f"Найдена ссылка на изображение: alt='{alt_text}', "
-                f"path='{img_path_str}'"
-            )
-
-            # Очищаем путь от префиксов, если они есть
-            clean_path_str = img_path_str
-            if clean_path_str.startswith("images/"):
-                clean_path_str = clean_path_str[len("images/"):]
-            elif clean_path_str.startswith("report/output/images/"):
-                clean_path_str = clean_path_str[len("report/output/images/"):]
-            elif "report/output/images/" in clean_path_str:
-                # Например, "report/output/images/pf_CurrentEquipmentDays_boxplot.png"
-                parts = clean_path_str.split("report/output/images/")
-                if len(parts) > 1:
-                    clean_path_str = parts[1]
-
-            # Формируем абсолютный путь к файлу
-            img_full_path = self.base_images_dir / clean_path_str
-
-            # Пытаемся получить base64
-            data_url = self._image_to_base64(img_full_path)
-            
-            if data_url:
-                logger.debug(f"Изображение встроено: {img_full_path}")
-                # Заменяем Markdown-ссылку на HTML-тег img
-                return f'<p style="text-align: center;"><img src="{data_url}" alt="{alt_text}" style="max-width: 100%; height: auto;" /></p><p style="text-align: center; font-size: 0.9em;"><em>{alt_text}</em></p>'
-            else:
-                # Если файл не найден или ошибка, НЕ вставляем ничего
-                logger.warning(f"Изображение не встроено, пропущено: {img_path_str}")
-                # Возвращаем пустую строку, чтобы удалить ссылку на изображение из отчета
-                return ""
-
-        # Ищем все изображения в формате ![alt](path)
-        # Используем re.DOTALL на случай, если в пути будут специальные символы
-        pattern = r'!\[(.*?)\]\(([^)]+)\)'
-        processed_content = re.sub(pattern, replace_image_tag, markdown_content, flags=re.DOTALL)
-
-        return processed_content, images_found_for_gallery
-
-
-# --- Функции LLM ---
-def call_llm_for_qa(
-        report_text: str, question: str, api_key: str, base_url: str, model: str
-) -> str:
-    """
-    Вызывает LLM для ответа на вопрос по отчету.
-
-    Args:
-        report_text: Текст отчета.
-        question: Вопрос пользователя.
-        api_key: API ключ.
-        base_url: Базовый URL.
-        model: Модель для использования.
-
-    Returns:
-        Ответ от LLM.
-    """
+def call_llm_for_qa(report_text: str, question: str, api_key: str, base_url: str, model: str) -> str:
     if not OPENAI_AVAILABLE:
         return "❌ Библиотека 'openai' не установлена."
 
@@ -171,7 +40,7 @@ def call_llm_for_qa(
         return "❌ Необходимо заполнить все параметры API (ключ, URL, модель)."
 
     try:
-        client = OpenAI(api_key=api_key, base_url=base_url.rstrip("/") + "/v1")
+        client = OpenAI(api_key=api_key, base_url=base_url + "/v1")
         prompt = f"""
 Отчет:
 {report_text}
@@ -197,19 +66,6 @@ def call_llm_for_qa(
 def call_llm_to_determine_target(
         question: str, columns: List[str], api_key: str, base_url: str, model: str
 ) -> str:
-    """
-    Вызывает LLM для определения таргета на основе вопроса.
-
-    Args:
-        question: Вопрос пользователя.
-        columns: Список колонок датасета.
-        api_key: API ключ.
-        base_url: Базовый URL.
-        model: Модель для использования.
-
-    Returns:
-        Предполагаемый таргет.
-    """
     if not OPENAI_AVAILABLE:
         return columns[0] if columns else ""
 
@@ -217,7 +73,7 @@ def call_llm_to_determine_target(
         return columns[0] if columns else ""
 
     try:
-        client = OpenAI(api_key=api_key, base_url=base_url.rstrip("/") + "/v1")
+        client = OpenAI(api_key=api_key, base_url=base_url + "/v1")
         columns_str = "\n".join([f"- {col}" for col in columns])
         prompt = f"""
 Ты помощник по анализу данных. Пользователь задал вопрос по датасету.
@@ -251,35 +107,20 @@ def call_llm_to_determine_target(
         return columns[0] if columns else ""
 
 
-# --- Основная логика Gradio ---
 def run_analysis(
         file_obj,
         api_key: str,
         base_url: str,
         model: str,
         question_for_target: str,
-        original_filename: str,
-) -> Tuple[str, str, List, str, str]:
-    """
-    Запускает анализ датасета.
-
-    Args:
-        file_obj: Объект файла Gradio.
-        api_key: API ключ.
-        base_url: Базовый URL.
-        model: Модель.
-        question_for_target: Вопрос для определения таргета.
-
-    Returns:
-        Кортеж: (статус, путь_к_отчету, изображения, текст_отчета, история)
-    """
+) -> Tuple[str, str, str, str, str]:
     if not file_obj:
-        return "❌ Файл не загружен.", "", [], "", ""
+        return "❌ Файл не загружен.", "", "", "", ""
 
     if not question_for_target:
         return (
-            "❌ Пожалуйста, задайте вопрос для автоматического определения таргета.",
-            "", [], "", ""
+            "❌ Пожалуйста, задайте свой вопрос.",
+            "", "", "", ""
         )
 
     try:
@@ -308,7 +149,7 @@ def run_analysis(
             return (
                 f"❌ Определенный столбец '{target_col}' не является бинарным. "
                 f"Уникальные значения: {unique_vals}.",
-                "", [], "", ""
+                "", "", "", ""
             )
 
         with tempfile.NamedTemporaryFile(
@@ -317,30 +158,31 @@ def run_analysis(
             df.to_csv(tmpfile.name, index=False)
             tmp_path = tmpfile.name
 
+        original_filename = os.path.basename(file_obj.name)
         report_path, history, report_text = analyze_dataset(tmp_path, target_col, original_filename)
         logger.info("✅ Анализ завершен.")
 
         os.unlink(tmp_path)
 
-        processor = MarkdownImageProcessor()
-        processed_markdown, images = processor.process_markdown(report_text)
+        from report.to_html import markdown_to_html_with_images
+        report_html = markdown_to_html_with_images(report_text)
+        logger.info("✅ Отчет преобразован в HTML.")
 
         return (
             "✅ Анализ завершен!",
             report_path,
-            images,
+            report_html,
             report_text,
             str(history),
         )
     except Exception as e:
         logger.error(f"Ошибка в run_analysis: {e}")
-        return f"❌ Ошибка: {str(e)}", "", [], "", ""
+        return f"❌ Ошибка: {str(e)}", "", "", "", ""
 
 
 def answer_question(
         question: str, report_text: str, api_key: str, base_url: str, model: str
 ) -> str:
-    """Отвечает на вопрос по отчету."""
     if not question:
         return "Пожалуйста, введите вопрос."
     if not report_text:
@@ -348,12 +190,11 @@ def answer_question(
 
     logger.info(f"Вопрос по отчету: {question}")
     answer = call_llm_for_qa(report_text, question, api_key, base_url, model)
-    logger.info("Ответ на вопрос получен.")
+    logger.info("✅ Ответ на вопрос получен.")
     return answer
 
 
 def create_zip_with_images(report_text: str) -> Optional[str]:
-    """Создает ZIP архив с изображениями из отчета."""
     if not report_text:
         return None
 
@@ -399,11 +240,10 @@ def create_zip_with_images(report_text: str) -> Optional[str]:
 
 
 def fetch_models(api_key: str, base_url: str):
-    """Получает список моделей от API."""
     if not api_key or not base_url:
         return gr.update(choices=[], value="", interactive=True)
     try:
-        client = OpenAI(api_key=api_key, base_url=base_url.rstrip("/") + "/v1")
+        client = OpenAI(api_key=api_key, base_url=base_url + "/v1")
         models_response = client.models.list()
         model_ids = sorted([model.id for model in models_response.data])
         return gr.update(
@@ -417,7 +257,6 @@ def fetch_models(api_key: str, base_url: str):
 
 
 def save_api_settings(api_key: str, base_url: str, model: str) -> str:
-    """Сохраняет настройки API в .env файл."""
     try:
         with open(".env", "w", encoding="utf-8") as f:
             f.write(f"OPENAI_API_KEY={api_key}\n")
@@ -435,13 +274,21 @@ def save_api_settings(api_key: str, base_url: str, model: str) -> str:
         return f"❌ Ошибка сохранения настроек: {str(e)}"
 
 
-# --- Gradio Интерфейс ---
+def save_html_report(html_content: str) -> str:
+    if not html_content:
+        return ""
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".html", mode='w', encoding='utf-8') as f:
+            f.write(html_content)
+            return f.name
+    except Exception as e:
+        logger.error(f"Ошибка сохранения HTML отчета: {e}")
+        return ""
+
+
 def build_interface():
-    """Создает Gradio интерфейс."""
-    with gr.Blocks(title="InsightFinder") as demo:
-        gr.Markdown("# InsightFinder — AI агент для анализа данных")
-        # gr.Image("insightFinderLogo.png", elem_id="logo", show_label=False,
-        # container=False, height=100)
+    with gr.Blocks(title="InsightFinder", theme=gr.themes.Default()) as demo:
+        gr.Markdown("# 🧠 InsightFinder — AI агент для анализа данных")
 
         report_text_state = gr.State("")
         history_state = gr.State("")
@@ -480,7 +327,7 @@ def build_interface():
                                     base_url=os.getenv(
                                         "OPENAI_BASE_URL",
                                         "https://openai-hub.neuraldeep.tech"
-                                    ).rstrip("/") + "/v1",
+                                    ) + "/v1",
                                 )
                                 models_response = client.models.list()
                                 initial_models = sorted(
@@ -522,15 +369,8 @@ def build_interface():
 
                 with gr.Column(scale=2):
                     status_output = gr.Textbox(label="Статус", interactive=False)
-                    report_markdown = gr.Markdown(
+                    report_html_output = gr.HTML(
                         label="📑 Итоговый отчёт", visible=False
-                    )
-                    images_gallery = gr.Gallery(
-                        label="📊 Графики",
-                        columns=2,
-                        height="auto",
-                        object_fit="contain",
-                        visible=False,
                     )
 
                     with gr.Row(visible=False) as download_row:
@@ -538,20 +378,20 @@ def build_interface():
                         images_zip_download = gr.File(
                             label="📥 Скачать графики (.zip)"
                         )
+                        report_html_download = gr.File(label="📥 Скачать отчёт (.html)")
 
                     with gr.Group(visible=False) as qa_section:
-                        gr.Markdown("### Задать вопрос по отчету")
+                        gr.Markdown("### ❓ Задать вопрос по отчету")
 
                         question_input = gr.Textbox(
                             label="Ваш вопрос",
                             placeholder="Например: Какой главный дифференцирующий признак?",
                         )
-                        ask_btn = gr.Button("Получить ответ")
+                        ask_btn = gr.Button("❓ Получить ответ")
                         answer_output = gr.Textbox(
                             label="Ответ", interactive=False, lines=5
                         )
 
-        # --- Обработчики событий ---
         fetch_models_btn.click(
             fetch_models,
             inputs=[api_key_input, base_url_input],
@@ -580,38 +420,28 @@ def build_interface():
             queue=False,
         )
 
-
         def on_run_analysis(file_obj, api_key, base_url, model, question_for_target):
-            # Извлекаем оригинальное имя файла
             original_filename = file_obj.name.split("/")[-1] if file_obj else "unknown.csv"
 
-            (
-                status,
-                report_path,
-                images,
-                report_text,
-                history,
-            ) = run_analysis(
-                file_obj, api_key, base_url, model, question_for_target, original_filename # <-- Добавляем сюда
+            status, report_path, report_html, report_text, history = run_analysis(
+                file_obj, api_key, base_url, model, question_for_target
             )
 
-
             zip_path = create_zip_with_images(report_text)
+            html_file_path = save_html_report(report_html)
 
-            report_visible = bool(report_text)
-            images_visible = bool(images)
-            download_visible = bool(report_path or zip_path)
+            report_visible = bool(report_html)
+            download_visible = bool(report_path or zip_path or html_file_path)
             qa_visible = bool(report_text)
 
             return (
                 status,
-                report_text if report_text else "Отчет не сгенерирован.",
+                report_html if report_html else "<p>Отчет не сгенерирован.</p>",
                 gr.update(visible=report_visible),
-                images,
-                gr.update(visible=images_visible),
                 report_path if report_path and os.path.exists(
                     report_path) else None,
                 zip_path if zip_path and os.path.exists(zip_path) else None,
+                html_file_path if html_file_path and os.path.exists(html_file_path) else None,
                 gr.update(visible=download_visible),
                 gr.update(visible=qa_visible),
                 report_text,
@@ -629,12 +459,11 @@ def build_interface():
             ],
             outputs=[
                 status_output,
-                report_markdown,
-                report_markdown,
-                images_gallery,
-                images_gallery,
+                report_html_output,
+                report_html_output,
                 report_download,
                 images_zip_download,
+                report_html_download,
                 download_row,
                 qa_section,
                 report_text_state,
@@ -661,7 +490,6 @@ def build_interface():
     return demo
 
 
-# --- Точка входа ---
 if __name__ == "__main__":
     Path("tmp").mkdir(exist_ok=True)
     Path("logs").mkdir(exist_ok=True)

@@ -49,11 +49,6 @@ def get_logger(name: str, log_file: str | None = None) -> logging.Logger:
     """
     logger = logging.getLogger(name)
     
-    # Устанавливаем уровень, если он еще не установлен или ниже нужного
-    # Обычно это не нужно, так как уровень установлен у корневого логгера
-    # if logger.level == logging.NOTSET:
-    #     logger.setLevel(logging.INFO)
-
     # Проверяем существующие обработчики у этого конкретного логгера
     current_handlers = set((type(h).__name__, getattr(h, 'baseFilename', None)) for h in logger.handlers)
 
