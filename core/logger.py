@@ -14,28 +14,49 @@ log_file_path = logs_dir / "app.log"
 formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 # Настройка корневого логгера для записи ВСЕХ логов в файл
-# Это обеспечит запись всех сообщений от всех частей приложения
 root_logger = logging.getLogger()
-# Устанавливаем уровень для корневого логгера
 root_logger.setLevel(logging.INFO)
 
-# Проверяем, есть ли уже файловый обработчик для этого файла, чтобы не добавлять дубликаты
-file_handler_exists = any(
-    isinstance(handler, logging.FileHandler) and Path(handler.baseFilename).resolve() == log_file_path.resolve()
-    for handler in root_logger.handlers
-)
+# Переменная для отслеживания, был ли уже настроен корневой логгер в этом процессе
+_root_logger_configured = False
 
-if not file_handler_exists:
-    # Создаем и добавляем файловый обработчик к корневому логгеру
-    file_handler = logging.FileHandler(log_file_path, mode='a', encoding='utf-8')
+def _setup_root_logger():
+    """Настраивает корневой логгер для записи в app.log с перезаписью."""
+    global _root_logger_configured
+    if _root_logger_configured:
+        return
+
+    # Удаляем существующие FileHandler для app.log
+    handlers_to_remove = [
+        h for h in root_logger.handlers 
+        if isinstance(h, logging.FileHandler) and 
+           Path(h.baseFilename).resolve() == log_file_path.resolve()
+    ]
+    for handler in handlers_to_remove:
+        handler.close()
+        root_logger.removeHandler(handler)
+
+    # Создаем новый FileHandler с mode='w' для перезаписи
+    file_handler = logging.FileHandler(log_file_path, mode='w', encoding='utf-8')
     file_handler.setFormatter(formatter)
     root_logger.addHandler(file_handler)
-    print(f"Логирование в файл настроено: {log_file_path}")
+    
+    # Добавляем обработчик для консоли, если его еще нет
+    if not any(isinstance(h, logging.StreamHandler) for h in root_logger.handlers):
+        console_handler = logging.StreamHandler(sys.stdout)
+        console_handler.setFormatter(formatter)
+        root_logger.addHandler(console_handler)
+        
+    _root_logger_configured = True
+    print(f"Логирование в файл настроено (перезапись): {log_file_path}")
+
+# Настраиваем корневой логгер при импорте модуля
+_setup_root_logger()
 
 def get_logger(name: str, log_file: str | None = None) -> logging.Logger:
     """
     Получает или создает логгер с указанным именем.
-    Теперь он будет наследовать настройки корневого логгера (включая запись в app.log),
+    Логгер будет наследовать настройки корневого логгера (включая запись в app.log),
     а также может добавить дополнительный файловый обработчик для специфичного файла.
 
     Args:
@@ -49,33 +70,25 @@ def get_logger(name: str, log_file: str | None = None) -> logging.Logger:
     """
     logger = logging.getLogger(name)
     
-    # Устанавливаем уровень, если он еще не установлен или ниже нужного
-    # Обычно это не нужно, так как уровень установлен у корневого логгера
-    # if logger.level == logging.NOTSET:
-    #     logger.setLevel(logging.INFO)
-
-    # Проверяем существующие обработчики у этого конкретного логгера
-    current_handlers = set((type(h).__name__, getattr(h, 'baseFilename', None)) for h in logger.handlers)
-
-    # Добавляем обработчик для вывода в консоль, если его еще нет 
-    # (наследуется от корневого, но можно добавить явно для уверенности)
-    console_handler_key = ('StreamHandler', None)
-    if console_handler_key not in current_handlers:
-        console = logging.StreamHandler(sys.stdout)
-        console.setFormatter(formatter)
-        logger.addHandler(console)
-
     # Добавляем дополнительный обработчик для записи в специфичный файл, 
-    # если указан файл и обработчик еще не добавлен
-    # Это позволяет, например, иметь отдельный orchestrator.log помимо общего app.log
+    # если указан файл. Этот файл также будет перезаписываться при каждом запуске.
     if log_file:
         specific_log_path = logs_dir / log_file
-        specific_handler_key = ('FileHandler', str(specific_log_path.resolve()))
+        # Проверяем, есть ли уже обработчик для этого конкретного файла
+        handler_exists = any(
+            isinstance(h, logging.FileHandler) and 
+            Path(h.baseFilename).resolve() == specific_log_path.resolve()
+            for h in logger.handlers
+        )
         
-        if specific_handler_key not in current_handlers:
-            # mode='a' для добавления
-            handler = logging.FileHandler(specific_log_path, mode='a', encoding="utf-8")
-            handler.setFormatter(formatter)
-            logger.addHandler(handler)
+        if not handler_exists:
+            # mode='w' для перезаписи
+            try:
+                handler = logging.FileHandler(specific_log_path, mode='w', encoding="utf-8")
+                handler.setFormatter(formatter)
+                logger.addHandler(handler)
+            except Exception as e:
+                # Если не удалось создать файл, записываем ошибку в корневой логгер
+                root_logger.error(f"Не удалось создать лог-файл {specific_log_path}: {e}")
             
     return logger

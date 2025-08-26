@@ -52,7 +52,8 @@ insightfinder/
 │   └── ...(другие тесты)
 │
 ├── ui/ 
-│   └── web_app.py                    # Веб интерфейс
+|   ├── web_app.py                    # Веб интерфейс резрв (streamlit)
+│   └── gradio_app.py                 # Веб интерфейс основной (gradio)
 │
 ├── tools/
 │   ├── __init__.py
