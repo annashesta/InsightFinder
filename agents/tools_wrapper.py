@@ -3,7 +3,7 @@ from typing import Dict, Any
 from langchain.tools import BaseTool
 from pydantic import BaseModel, Field
 
-# Импортируем ваши тулзы
+# Импортируем тулзы
 from tools.primary_feature_finder import primary_feature_finder
 from tools.correlation_analysis import correlation_analysis
 from tools.descriptive_stats_comparator import descriptive_stats_comparator
@@ -189,5 +189,5 @@ ALL_TOOLS = [
     DistributionVisualizerTool(),
     OutlierDetectorTool(),
     InteractionAnalyzerTool()
-    # InsightDrivenVisualizerTool()
+    # InsightDrivenVisualizerTool() - переехал в оркестратор
 ]

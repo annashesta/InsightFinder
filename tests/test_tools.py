@@ -1,24 +1,18 @@
 # tests/test_tools.py
-# Для запуска всех. тестов pytest tests/test_tools.py -v -s
-# Заметка: всего 11 тестов
+"""
+Тесты для инструментов анализа данных InsightFinder.
 
-# 1. PrimaryFeatureFinder (2 теста)
-# test_primary_feature_finder_success
-# test_primary_feature_finder_missing_target
-# 2. CorrelationAnalysis (2 теста)
-# test_correlation_analysis_success
-# test_correlation_analysis_no_numeric
-# 3. DescriptiveStatsComparator (2 теста)
-# test_descriptive_stats_comparator_success
-# test_descriptive_stats_comparator_no_numeric
-# 4. CategoricalFeatureAnalysis (2 теста)
-# test_categorical_feature_analysis_success
-# test_categorical_feature_analysis_no_categorical
-# 5. FullModelFeatureImportance (2 теста)
-# test_full_model_importance_success
-# test_full_model_importance_top_k
-#  Интеграционный тест на реальных данных (1 тест)
-
+Для запуска всех тестов: pytest tests/test_tools.py -v -s
+Всего 15 тестов:
+1. PrimaryFeatureFinder (2 теста)
+2. CorrelationAnalysis (2 теста)
+3. DescriptiveStatsComparator (2 теста)
+4. CategoricalFeatureAnalysis (2 теста)
+5. FullModelFeatureImportance (2 теста)
+6. OutlierDetector (5 тестов)
+7. InteractionAnalyzer (4 теста)
+8. DistributionVisualizer (4 теста)
+"""
 
 import sys
 import os
@@ -31,7 +25,6 @@ import pandas as pd
 import numpy as np
 from typing import Dict, Any
 from pathlib import Path
-
 
 # Импортируем тулзы
 from tools.primary_feature_finder import primary_feature_finder
@@ -46,6 +39,7 @@ from tools.distribution_visualizer import distribution_visualizer
 # --------------------------
 # Фикстуры
 # --------------------------
+
 
 @pytest.fixture
 def sample_df():
@@ -71,7 +65,6 @@ def sample_df():
         'is_premium': np.where(is_premium_yes == 1, 'Yes', 'No')  # Строковый таргет
     })
     return df
-
 
 
 # --------------------------
@@ -121,6 +114,7 @@ def test_primary_feature_finder_success(sample_df):
         assert d["information_gain"] >= 0
     print("✅ PrimaryFeatureFinder: success")
 
+
 def test_primary_feature_finder_missing_target(sample_df):
     result = primary_feature_finder(sample_df, target_column="missing")
     assert result["status"] == "error"
@@ -142,6 +136,7 @@ def test_correlation_analysis_success(sample_df):
         assert len(d["top_positive"]) <= 5
         assert "n_features_analyzed" in d and d["n_features_analyzed"] > 0
     print("✅ CorrelationAnalysis: success")
+
 
 def test_correlation_analysis_no_numeric(sample_df):
     df = sample_df[["region", "loyalty", "is_premium"]].copy()
@@ -194,6 +189,7 @@ def test_categorical_feature_analysis_success(sample_df):
         assert "n_significant" in d
     print("✅ CategoricalFeatureAnalysis: success")
 
+
 def test_categorical_feature_analysis_no_categorical(sample_df):
     df = sample_df[["income", "age", "spend_score", "is_premium"]].copy()
     result = categorical_feature_analysis(df, target_column="is_premium")
@@ -214,11 +210,13 @@ def test_full_model_importance_success(sample_df):
         assert len(d["feature_importances"]) <= 10
     print("✅ FullModelFeatureImportance: success")
 
+
 def test_full_model_importance_top_k(sample_df):
     result = full_model_importance(sample_df, target_column="is_premium", top_k=3)
     if result["status"] == "success":
         assert len(result["details"]["feature_importances"]) <= 3
     print("✅ FullModelFeatureImportance: custom top_k")
+
 
 # --------------------------
 # Тесты: OutlierDetector
@@ -270,8 +268,9 @@ def test_outlier_detector_no_outliers():
     assert "Выбросы не обнаружены" in result["summary"]
     print("✅ OutlierDetector: no outliers detected")
 
+
 # --------------------------
-# Тесты: interaction_analyzer
+# Тесты: InteractionAnalyzer
 # --------------------------
 
 def test_interaction_analyzer_success(sample_df):
@@ -308,7 +307,7 @@ def test_interaction_analyzer_custom_top_k(sample_df):
 
 
 # --------------------------
-# Тесты: distribution_vissualizer
+# Тесты: DistributionVisualizer
 # --------------------------
 
 def test_distribution_visualizer_success(sample_df, tmp_path):
@@ -346,5 +345,3 @@ def test_distribution_visualizer_custom_top_k(sample_df, tmp_path):
     if result["status"] == "success":
         assert len(result["details"]["features_analyzed"]) <= 2
     print("✅ DistributionVisualizer: custom top_k")
-
-

@@ -32,7 +32,7 @@ httpx==0.28.1
 huggingface-hub==0.34.4
 idna==3.10
 iniconfig==2.1.0
--e git+https://github.com/annashesta/InsightFinder.git@bc8489b296bd23548ad481b0a679ec4ad986fd2a#egg=insightfinder
+-e git+https://github.com/annashesta/InsightFinder.git@25e223b369603a565c21c7cfffca145c8f133ad8#egg=insightfinder
 Jinja2==3.1.6
 jiter==0.10.0
 joblib==1.5.1
@@ -46,6 +46,7 @@ langchain-core==0.3.74
 langchain-openai==0.3.30
 langchain-text-splitters==0.3.9
 langsmith==0.4.14
+Markdown==3.8.2
 markdown-it-py==4.0.0
 MarkupSafe==3.0.2
 matplotlib==3.10.5

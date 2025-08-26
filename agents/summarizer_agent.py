@@ -341,7 +341,7 @@ def generate_summary(
     visualization_result = results_map.get("DistributionVisualizer")
     outlier_result = results_map.get("OutlierDetector")
     interaction_result = results_map.get("InteractionAnalyzer")
-    insight_viz_result = results_map.get("InsightDrivenVisualizer") # Новый инструмент
+    insight_viz_result = results_map.get("InsightDrivenVisualizer")
 
     insights_list = "\n".join([f"- {s}" for s in insights]) if insights else "Нет данных"
 

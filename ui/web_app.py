@@ -1,4 +1,4 @@
-# # web_app.py
+# # web_app.py резервный UI
 
 # import streamlit as st
 # import pandas as pd
