@@ -288,7 +288,10 @@ def save_html_report(html_content: str) -> str:
 
 def build_interface():
     with gr.Blocks(title="InsightFinder", theme=gr.themes.Default()) as demo:
-        gr.Markdown("# 🧠 InsightFinder — AI агент для анализа данных")
+        gr.Markdown(
+            "# InsightFinder — AI агент для анализа данных\n\n"
+            "> 🌞 *Рекомендуем внизу страницы зайти в настройки и перевести оформление в режим Light*"
+        )
 
         report_text_state = gr.State("")
         history_state = gr.State("")
@@ -359,8 +362,7 @@ def build_interface():
                         )
 
                     question_for_target_input = gr.Textbox(
-                        label="❓ Задайте вопрос для автоматического "
-                              "определения таргета",
+                        label="Задайте ваш вопрос",
                         placeholder="Например: Какие факторы влияют на отток "
                                     "клиентов?",
                     )
@@ -381,13 +383,13 @@ def build_interface():
                         report_html_download = gr.File(label="📥 Скачать отчёт (.html)")
 
                     with gr.Group(visible=False) as qa_section:
-                        gr.Markdown("### ❓ Задать вопрос по отчету")
+                        gr.Markdown("### Задать вопрос по отчету")
 
                         question_input = gr.Textbox(
                             label="Ваш вопрос",
                             placeholder="Например: Какой главный дифференцирующий признак?",
                         )
-                        ask_btn = gr.Button("❓ Получить ответ")
+                        ask_btn = gr.Button("Получить ответ")
                         answer_output = gr.Textbox(
                             label="Ответ", interactive=False, lines=5
                         )
