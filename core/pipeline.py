@@ -7,12 +7,17 @@ from report.generate_report import save_report
 import os
 
 
-def analyze_dataset(data_path: str, target_column: str | None = None):
+def analyze_dataset(data_path: str, target_column: str | None = None, filename: str | None = None):
     if not os.path.exists(data_path):
         raise FileNotFoundError(f"Файл не найден: {data_path}")
 
     print(f"📂 Загружаем данные из {data_path}...")
     df = load_data(data_path)
+
+    # Если имя файла не передано, используем базовое имя пути
+    if filename is None: 
+        filename = os.path.basename(data_path) # 
+        print(f"📄 Имя файла для отчета: '{filename}'") 
 
     if target_column is None:
         print("🔍 Автоопределение бинарной целевой переменной...")
@@ -34,8 +39,7 @@ def analyze_dataset(data_path: str, target_column: str | None = None):
     history, final_report = run_simple_orchestration(
         df=df,
         target_column=target_column,
-        filename=os.path.basename(data_path)
-    )
+        filename=filename )
 
     try:
         report_path = save_report(final_report)
