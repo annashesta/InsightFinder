@@ -137,7 +137,7 @@ class MarkdownImageProcessor:
                 # Если файл не найден или ошибка, НЕ вставляем ничего
                 logger.warning(f"Изображение не встроено, пропущено: {img_path_str}")
                 # Возвращаем пустую строку, чтобы удалить ссылку на изображение из отчета
-                return "" # <-- Изменено здесь
+                return ""
 
         # Ищем все изображения в формате ![alt](path)
         # Используем re.DOTALL на случай, если в пути будут специальные символы
@@ -258,6 +258,7 @@ def run_analysis(
         base_url: str,
         model: str,
         question_for_target: str,
+        original_filename: str,
 ) -> Tuple[str, str, List, str, str]:
     """
     Запускает анализ датасета.
@@ -316,7 +317,7 @@ def run_analysis(
             df.to_csv(tmpfile.name, index=False)
             tmp_path = tmpfile.name
 
-        report_path, history, report_text = analyze_dataset(tmp_path, target_col)
+        report_path, history, report_text = analyze_dataset(tmp_path, target_col, original_filename)
         logger.info("✅ Анализ завершен.")
 
         os.unlink(tmp_path)
@@ -347,7 +348,7 @@ def answer_question(
 
     logger.info(f"Вопрос по отчету: {question}")
     answer = call_llm_for_qa(report_text, question, api_key, base_url, model)
-    logger.info("✅ Ответ на вопрос получен.")
+    logger.info("Ответ на вопрос получен.")
     return answer
 
 
@@ -438,7 +439,7 @@ def save_api_settings(api_key: str, base_url: str, model: str) -> str:
 def build_interface():
     """Создает Gradio интерфейс."""
     with gr.Blocks(title="InsightFinder") as demo:
-        gr.Markdown("# 🧠 InsightFinder — AI агент для анализа данных")
+        gr.Markdown("# InsightFinder — AI агент для анализа данных")
         # gr.Image("insightFinderLogo.png", elem_id="logo", show_label=False,
         # container=False, height=100)
 
@@ -579,7 +580,11 @@ def build_interface():
             queue=False,
         )
 
+
         def on_run_analysis(file_obj, api_key, base_url, model, question_for_target):
+            # Извлекаем оригинальное имя файла
+            original_filename = file_obj.name.split("/")[-1] if file_obj else "unknown.csv"
+
             (
                 status,
                 report_path,
@@ -587,8 +592,9 @@ def build_interface():
                 report_text,
                 history,
             ) = run_analysis(
-                file_obj, api_key, base_url, model, question_for_target
+                file_obj, api_key, base_url, model, question_for_target, original_filename # <-- Добавляем сюда
             )
+
 
             zip_path = create_zip_with_images(report_text)
 
