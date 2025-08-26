@@ -92,7 +92,7 @@ class MarkdownImageProcessor:
     def process_markdown(self, markdown_content: str) -> Tuple[str, List]:
         """
         Обрабатывает Markdown, находя изображения, кодируя их в base64 и
-        заменяя ссылки на HTML-теги <img>.
+        заменяя ссылки на HTML-теги <img>. Если файл не найден, ссылка удаляется.
 
         Args:
             markdown_content: Исходный Markdown текст.
@@ -111,42 +111,39 @@ class MarkdownImageProcessor:
                 f"path='{img_path_str}'"
             )
 
+            # Очищаем путь от префиксов, если они есть
             clean_path_str = img_path_str
             if clean_path_str.startswith("images/"):
                 clean_path_str = clean_path_str[len("images/"):]
             elif clean_path_str.startswith("report/output/images/"):
                 clean_path_str = clean_path_str[len("report/output/images/"):]
             elif "report/output/images/" in clean_path_str:
+                # Например, "report/output/images/pf_CurrentEquipmentDays_boxplot.png"
                 parts = clean_path_str.split("report/output/images/")
                 if len(parts) > 1:
                     clean_path_str = parts[1]
 
+            # Формируем абсолютный путь к файлу
             img_full_path = self.base_images_dir / clean_path_str
-            data_url = self._image_to_base64(img_full_path)
 
+            # Пытаемся получить base64
+            data_url = self._image_to_base64(img_full_path)
+            
             if data_url:
                 logger.debug(f"Изображение встроено: {img_full_path}")
-                return (
-                    f'<p style="text-align: center;">'
-                    f'<img src="{data_url}" alt="{alt_text}" '
-                    f'style="max-width: 100%; height: auto;" />'
-                    f'</p>'
-                    f'<p style="text-align: center; font-size: 0.9em;">'
-                    f'<em>{alt_text}</em></p>'
-                )
+                # Заменяем Markdown-ссылку на HTML-тег img
+                return f'<p style="text-align: center;"><img src="{data_url}" alt="{alt_text}" style="max-width: 100%; height: auto;" /></p><p style="text-align: center; font-size: 0.9em;"><em>{alt_text}</em></p>'
             else:
-                logger.warning(
-                    f"Изображение не встроено, оставлен placeholder: {img_path_str}"
-                )
-                return (
-                    f'<p style="text-align: center; font-style: italic;">'
-                    f'[Изображение не найдено: {alt_text}]</p>'
-                )
+                # Если файл не найден или ошибка, НЕ вставляем ничего
+                logger.warning(f"Изображение не встроено, пропущено: {img_path_str}")
+                # Возвращаем пустую строку, чтобы удалить ссылку на изображение из отчета
+                return "" # <-- Изменено здесь
 
-        pattern = r"!\[(.*?)\]\(([^)]+)\)"
-        processed_content = re.sub(
-            pattern, replace_image_tag, markdown_content, flags=re.DOTALL
-        )
+        # Ищем все изображения в формате ![alt](path)
+        # Используем re.DOTALL на случай, если в пути будут специальные символы
+        pattern = r'!\[(.*?)\]\(([^)]+)\)'
+        processed_content = re.sub(pattern, replace_image_tag, markdown_content, flags=re.DOTALL)
+
         return processed_content, images_found_for_gallery
 
 
@@ -348,7 +345,7 @@ def answer_question(
     if not report_text:
         return "Сначала необходимо выполнить анализ и получить отчет."
 
-    logger.info(f"❓ Вопрос по отчету: {question}")
+    logger.info(f"Вопрос по отчету: {question}")
     answer = call_llm_for_qa(report_text, question, api_key, base_url, model)
     logger.info("✅ Ответ на вопрос получен.")
     return answer
@@ -441,7 +438,7 @@ def save_api_settings(api_key: str, base_url: str, model: str) -> str:
 def build_interface():
     """Создает Gradio интерфейс."""
     with gr.Blocks(title="InsightFinder") as demo:
-        gr.Markdown("# InsightFinder — AI агент для анализа данных")
+        gr.Markdown("# 🧠 InsightFinder — AI агент для анализа данных")
         # gr.Image("insightFinderLogo.png", elem_id="logo", show_label=False,
         # container=False, height=100)
 
@@ -465,7 +462,7 @@ def build_interface():
                             label="OPENAI_BASE_URL",
                             value=os.getenv(
                                 "OPENAI_BASE_URL",
-                                "https://openai-hub.neuraldeep.tech  "
+                                "https://openai-hub.neuraldeep.tech"
                             ).strip(),
                         )
 
@@ -481,7 +478,7 @@ def build_interface():
                                     api_key=os.getenv("OPENAI_API_KEY", ""),
                                     base_url=os.getenv(
                                         "OPENAI_BASE_URL",
-                                        "https://openai-hub.neuraldeep.tech  "
+                                        "https://openai-hub.neuraldeep.tech"
                                     ).rstrip("/") + "/v1",
                                 )
                                 models_response = client.models.list()
@@ -546,7 +543,7 @@ def build_interface():
 
                         question_input = gr.Textbox(
                             label="Ваш вопрос",
-                            placeholder="Введите свой вопрос",
+                            placeholder="Например: Какой главный дифференцирующий признак?",
                         )
                         ask_btn = gr.Button("Получить ответ")
                         answer_output = gr.Textbox(
