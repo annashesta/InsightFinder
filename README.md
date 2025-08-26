@@ -44,6 +44,7 @@ insightfinder/
 │   │       ├── desc_*.png
 │   │       ├── corr_*.png
 │   │       └── ...(другие изображения)
+│   ├── to_html.py                    # преобразование отчета markdown в HTML
 │   └── generate_report.py            # Сохранение отчёта в файл
 │
 ├── tests/

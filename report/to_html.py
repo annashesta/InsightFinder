@@ -8,11 +8,22 @@ import base64
 import logging
 from pathlib import Path
 from typing import Optional
+import markdown  # Убедитесь, что библиотека установлена: pip install markdown
 
+# Настройка логгера для этого модуля
 logger = logging.getLogger(__name__)
 
 
 def _image_to_base64(image_path: Path) -> Optional[str]:
+    """
+    Читает изображение и возвращает его в виде строки base64.
+
+    Args:
+        image_path: Путь к файлу изображения.
+
+    Returns:
+        Строка данных изображения в формате base64 или None в случае ошибки.
+    """
     try:
         if not image_path.exists():
             logger.warning(f"Файл изображения не найден для HTML: {image_path}")
@@ -34,7 +45,8 @@ def _image_to_base64(image_path: Path) -> Optional[str]:
 
         with open(image_path, "rb") as image_file:
             encoded_string = base64.b64encode(image_file.read()).decode("utf-8")
-        return f"{mime_type};base64,{encoded_string}"
+        return f"data:{mime_type};base64,{encoded_string}"
+    
     except Exception as e:
         logger.error(
             f"Ошибка при кодировании изображения {image_path} в base64 для HTML: {e}"
@@ -45,9 +57,20 @@ def _image_to_base64(image_path: Path) -> Optional[str]:
 def markdown_to_html_with_images(
     markdown_content: str, base_images_dir: str = "report/output/images"
 ) -> str:
+    """
+    Преобразует Markdown-текст в HTML, встраивая изображения как base64.
+
+    Args:
+        markdown_content: Исходный Markdown текст.
+        base_images_dir: Базовая директория для поиска изображений.
+
+    Returns:
+        HTML-строка с встроенными изображениями.
+    """
     images_dir_path = Path(base_images_dir).resolve()
     logger.info(f"Преобразование Markdown в HTML. Images dir: {images_dir_path}")
 
+    # 1. Обработка изображений в Markdown перед преобразованием
     def replace_markdown_image_tag(match):
         alt_text = match.group(1).strip()
         img_path_str = match.group(2).strip()
@@ -56,6 +79,7 @@ def markdown_to_html_with_images(
             f"path='{img_path_str}'"
         )
 
+        # Очищаем путь от префиксов
         clean_path_str = img_path_str
         if clean_path_str.startswith("images/"):
             clean_path_str = clean_path_str[len("images/"):]
@@ -80,6 +104,7 @@ def markdown_to_html_with_images(
     md_image_pattern = r'!\[(.*?)\]\(([^)]+)\)'
     processed_md_for_html = re.sub(md_image_pattern, replace_markdown_image_tag, markdown_content, flags=re.DOTALL)
 
+    # 2. Простая замена для базовых элементов Markdown
     html_from_md = re.sub(r'^# (.+)$', r'<h1>\1</h1>', processed_md_for_html, flags=re.MULTILINE)
     html_from_md = re.sub(r'^## (.+)$', r'<h2>\1</h2>', html_from_md, flags=re.MULTILINE)
     html_from_md = re.sub(r'^### (.+)$', r'<h3>\1</h3>', html_from_md, flags=re.MULTILINE)
@@ -94,6 +119,7 @@ def markdown_to_html_with_images(
     html_from_md = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', html_from_md)
     html_from_md = re.sub(r'\*(.+?)\*', r'<em>\1</em>', html_from_md)
 
+    # 3. Специальная обработка таблиц
     def process_table(match):
         table_text = match.group(0)
         lines = table_text.strip().split('\n')
@@ -132,6 +158,7 @@ def markdown_to_html_with_images(
     table_pattern = r'(?:^\|.*$\n){2,}'
     html_with_tables = re.sub(table_pattern, process_table, html_from_md, flags=re.MULTILINE)
 
+    # 4. Пост-обработка HTML: стилизация изображений
     def wrap_images(match):
         img_tag = match.group(0)
         alt_match = re.search(r'alt="([^"]*)"', img_tag) or re.search(r'data-original-alt="([^"]*)"', img_tag)
@@ -146,11 +173,13 @@ def markdown_to_html_with_images(
     
     html_with_styled_images = re.sub(r'<img[^>]+class="insightfinder-report-image"[^>]*>', wrap_images, html_with_tables)
     
+    # 5. Добавляем улучшенные стили
     styled_html = f"""
     <style>
+    /* Общие стили для отчета */
     #insightfinder-report-container {{
-        background-color: #ffffff;
-        color: #333333;
+        background-color: #ffffff !important;
+        color: #333333 !important;
         padding: 30px;
         border-radius: 10px;
         box-shadow: 0 4px 8px rgba(0,0,0,0.05);
@@ -161,8 +190,9 @@ def markdown_to_html_with_images(
         margin: 0 auto;
     }}
 
+    /* Заголовки */
     #insightfinder-report-container h1 {{
-        color: #2c3e50;
+        color: #2c3e50 !important;
         border-bottom: 2px solid #3498db;
         padding-bottom: 10px;
         margin-top: 1.5em;
@@ -170,7 +200,7 @@ def markdown_to_html_with_images(
         font-weight: 600;
     }}
     #insightfinder-report-container h2 {{
-        color: #34495e;
+        color: #34495e !important;
         border-bottom: 1px solid #bdc3c7;
         padding-bottom: 8px;
         margin-top: 1.3em;
@@ -179,17 +209,20 @@ def markdown_to_html_with_images(
     }}
     #insightfinder-report-container h3, 
     #insightfinder-report-container h4 {{
-        color: #2c3e50;
+        color: #2c3e50 !important;
         margin-top: 1.2em;
         margin-bottom: 0.6em;
         font-weight: 500;
     }}
 
+    /* Параграфы */
     #insightfinder-report-container p {{
+        color: #333333 !important;
         margin: 0.8em 0;
         text-align: justify;
     }}
 
+    /* Списки */
     #insightfinder-report-container ul, 
     #insightfinder-report-container ol {{
         margin: 0.8em 0;
@@ -199,24 +232,26 @@ def markdown_to_html_with_images(
         margin: 0.3em 0;
     }}
 
+    /* Ссылки */
     #insightfinder-report-container a {{
-        color: #3498db;
+        color: #3498db !important;
         text-decoration: none;
     }}
     #insightfinder-report-container a:hover {{
         text-decoration: underline;
     }}
 
+    /* Код */
     #insightfinder-report-container code {{
-        background-color: #f8f9fa;
+        background-color: #f8f9fa !important;
         padding: 2px 6px;
         border-radius: 4px;
         font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
         font-size: 0.9em;
-        color: #e74c3c;
+        color: #e74c3c !important;
     }}
     #insightfinder-report-container pre {{
-        background-color: #f8f9fa;
+        background-color: #f8f9fa !important;
         padding: 15px;
         border-radius: 6px;
         overflow-x: auto;
@@ -229,6 +264,7 @@ def markdown_to_html_with_images(
         padding: 0;
     }}
 
+    /* Таблицы */
     #insightfinder-report-container table {{
         border-collapse: collapse;
         width: 100%;
@@ -243,7 +279,7 @@ def markdown_to_html_with_images(
         text-align: left;
     }}
     #insightfinder-report-container th {{
-        background-color: #f1f8ff;
+        background-color: #f1f8ff !important;
         font-weight: 600;
         color: #24292e;
     }}
@@ -254,6 +290,7 @@ def markdown_to_html_with_images(
         background-color: #f6f8fa;
     }}
 
+    /* Изображения */
     #insightfinder-report-container .insightfinder-report-image {{
         max-width: 100%;
         height: auto;
@@ -262,6 +299,7 @@ def markdown_to_html_with_images(
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }}
     
+    /* Подписи к изображениям */
     #insightfinder-report-container figure {{
         margin: 1.5em 0;
         text-align: center;
@@ -273,6 +311,7 @@ def markdown_to_html_with_images(
         margin-top: 10px;
     }}
 
+    /* Горизонтальная линия */
     #insightfinder-report-container hr {{
         border: 0;
         height: 1px;
@@ -280,6 +319,7 @@ def markdown_to_html_with_images(
         margin: 2em 0;
     }}
 
+    /* Цитаты */
     #insightfinder-report-container blockquote {{
         margin: 1em 0;
         padding: 0.5em 1em;
@@ -291,6 +331,7 @@ def markdown_to_html_with_images(
     {html_with_styled_images}
     """
 
+    # 6. Обернем в основной контейнер
     full_html = f"""
 <!DOCTYPE html>
 <html>
