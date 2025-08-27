@@ -8,7 +8,6 @@ import base64
 import logging
 from pathlib import Path
 from typing import Optional
-import markdown  # Убедитесь, что библиотека установлена: pip install markdown
 
 # Настройка логгера для этого модуля
 logger = logging.getLogger(__name__)
@@ -46,7 +45,6 @@ def _image_to_base64(image_path: Path) -> Optional[str]:
         with open(image_path, "rb") as image_file:
             encoded_string = base64.b64encode(image_file.read()).decode("utf-8")
         return f"data:{mime_type};base64,{encoded_string}"
-    
     except Exception as e:
         logger.error(
             f"Ошибка при кодировании изображения {image_path} в base64 для HTML: {e}"
@@ -70,7 +68,7 @@ def markdown_to_html_with_images(
     images_dir_path = Path(base_images_dir).resolve()
     logger.info(f"Преобразование Markdown в HTML. Images dir: {images_dir_path}")
 
-    # 1. Обработка изображений в Markdown перед преобразованием
+    # Обработка изображений в Markdown перед преобразованием
     def replace_markdown_image_tag(match):
         alt_text = match.group(1).strip()
         img_path_str = match.group(2).strip()
@@ -104,22 +102,70 @@ def markdown_to_html_with_images(
     md_image_pattern = r'!\[(.*?)\]\(([^)]+)\)'
     processed_md_for_html = re.sub(md_image_pattern, replace_markdown_image_tag, markdown_content, flags=re.DOTALL)
 
-    # 2. Простая замена для базовых элементов Markdown
-    html_from_md = re.sub(r'^# (.+)$', r'<h1>\1</h1>', processed_md_for_html, flags=re.MULTILINE)
+    def process_lists(text):
+        lines = text.split('\n')
+        processed_lines = []
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+            
+            # Проверяем начало маркированного списка
+            if re.match(r'^\* ', line):
+                list_items = []
+                while i < len(lines) and re.match(r'^\* ', lines[i]):
+                    # Убираем маркер '* ' и добавляем элемент
+                    list_items.append(lines[i][2:])
+                    i += 1
+                # Формируем один HTML-список для всех собранных элементов
+                html_list = '<ul>\n' + '\n'.join([f'  <li>{item}</li>' for item in list_items]) + '\n</ul>'
+                processed_lines.append(html_list)
+                continue # Продолжаем со следующей строки после списка
+            
+            # Проверяем начало нумерованного списка
+            if re.match(r'^\d+\. ', line):
+                list_items = []
+                while i < len(lines) and re.match(r'^\d+\. ', lines[i]):
+                    # Убираем маркер '1. ' и добавляем элемент
+                    list_items.append(lines[i][lines[i].find('. ') + 2:])
+                    i += 1
+                # Формируем один HTML-список для всех собранных элементов
+                html_list = '<ol>\n' + '\n'.join([f'  <li>{item}</li>' for item in list_items]) + '\n</ol>'
+                processed_lines.append(html_list)
+                continue # Продолжаем со следующей строки после списка
+                
+            # Если строка не является частью списка, добавляем её как есть
+            processed_lines.append(line)
+            i += 1
+            
+        return '\n'.join(processed_lines)
+
+    # Применяем логику обработки списков
+    html_with_processed_lists = process_lists(processed_md_for_html)
+
+    # Преобразование оставшихся базовых элементов Markdown в HTML
+    # Заголовки
+    html_from_md = re.sub(r'^# (.+)$', r'<h1>\1</h1>', html_with_processed_lists, flags=re.MULTILINE)
     html_from_md = re.sub(r'^## (.+)$', r'<h2>\1</h2>', html_from_md, flags=re.MULTILINE)
     html_from_md = re.sub(r'^### (.+)$', r'<h3>\1</h3>', html_from_md, flags=re.MULTILINE)
     html_from_md = re.sub(r'^#### (.+)$', r'<h4>\1</h4>', html_from_md, flags=re.MULTILINE)
     
-    html_from_md = re.sub(r'^\* (.+)$', r'<ul><li>\1</li></ul>', html_from_md, flags=re.MULTILINE)
-    html_from_md = re.sub(r'^\d+\. (.+)$', r'<ol><li>\1</li></ol>', html_from_md, flags=re.MULTILINE)
-    
-    html_from_md = re.sub(r'`(.+?)`', r'<code>\1</code>', html_from_md)
-    html_from_md = re.sub(r'```(\w*)\n(.*?)\n```', r'<pre><code class="language-\1">\2</code></pre>', html_from_md, flags=re.DOTALL)
-    html_from_md = re.sub(r'\[(.+?)\]\((.+?)\)', r'<a href="\2">\1</a>', html_from_md)
+    # Жирный и курсив (делаем до кода, чтобы не сломать `` ` ``)
     html_from_md = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', html_from_md)
     html_from_md = re.sub(r'\*(.+?)\*', r'<em>\1</em>', html_from_md)
-
-    # 3. Специальная обработка таблиц
+    
+    # Код (inline)
+    html_from_md = re.sub(r'`(.+?)`', r'<code>\1</code>', html_from_md)
+    
+    # Горизонтальная линия
+    html_from_md = re.sub(r'^---$', r'<hr>', html_from_md, flags=re.MULTILINE)
+    
+    # Ссылки
+    html_from_md = re.sub(r'\[(.+?)\]\((.+?)\)', r'<a href="\2">\1</a>', html_from_md)
+    
+    # Блочные кодовые фрагменты (fenced code blocks)
+    html_from_md = re.sub(r'```(\w*)\n(.*?)\n```', r'<pre><code class="language-\1">\2</code></pre>', html_from_md, flags=re.DOTALL)
+    
+    # Специальная обработка таблиц
     def process_table(match):
         table_text = match.group(0)
         lines = table_text.strip().split('\n')
@@ -158,7 +204,7 @@ def markdown_to_html_with_images(
     table_pattern = r'(?:^\|.*$\n){2,}'
     html_with_tables = re.sub(table_pattern, process_table, html_from_md, flags=re.MULTILINE)
 
-    # 4. Пост-обработка HTML: стилизация изображений
+    # Пост-обработка HTML: стилизация изображений
     def wrap_images(match):
         img_tag = match.group(0)
         alt_match = re.search(r'alt="([^"]*)"', img_tag) or re.search(r'data-original-alt="([^"]*)"', img_tag)
@@ -173,7 +219,7 @@ def markdown_to_html_with_images(
     
     html_with_styled_images = re.sub(r'<img[^>]+class="insightfinder-report-image"[^>]*>', wrap_images, html_with_tables)
     
-    # 5. Добавляем улучшенные стили
+    # Добавляем улучшенные стили
     styled_html = f"""
     <style>
     /* Общие стили для отчета */
@@ -297,9 +343,9 @@ def markdown_to_html_with_images(
         border: 1px solid #d1d5da;
         border-radius: 6px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        transform: scale(0.8); /* Это уменьшит размер на 20% */
+        transform: scale(0.8); /* Уменьшаем на 20% */
     }}
-
+    
     /* Подписи к изображениям */
     #insightfinder-report-container figure {{
         margin: 1.5em 0;
@@ -332,7 +378,7 @@ def markdown_to_html_with_images(
     {html_with_styled_images}
     """
 
-    # 6. Обернем в основной контейнер
+    # Обернем в основной контейнер
     full_html = f"""
 <!DOCTYPE html>
 <html>

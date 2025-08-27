@@ -21,6 +21,7 @@ from core.utils import find_binary_target
 
 try:
     from openai import OpenAI
+
     OPENAI_AVAILABLE = True
 except ImportError:
     OPENAI_AVAILABLE = False
@@ -32,7 +33,26 @@ except ImportError:
 logger = get_logger(__name__, "gradio_app.log")
 
 
-def call_llm_for_qa(report_text: str, question: str, api_key: str, base_url: str, model: str) -> str:
+def call_llm_for_qa(
+        report_text: str,
+        question: str,
+        api_key: str,
+        base_url: str,
+        model: str
+) -> str:
+    """
+    Вызывает LLM для ответа на вопрос по отчету.
+
+    Args:
+        report_text: Текст отчета.
+        question: Вопрос пользователя.
+        api_key: API ключ.
+        base_url: Базовый URL.
+        model: Модель для использования.
+
+    Returns:
+        Ответ от LLM.
+    """
     if not OPENAI_AVAILABLE:
         return "❌ Библиотека 'openai' не установлена."
 
@@ -55,7 +75,10 @@ def call_llm_for_qa(report_text: str, question: str, api_key: str, base_url: str
             model=model,
             messages=[{"role": "user", "content": prompt}],
             temperature=0,
-            max_tokens=1024,
+            max_tokens=512,  # иначе gradio обрезает вывод
+            top_p=0.9,  # Ограничиваем разнообразие
+            frequency_penalty=0.5,  # Снижает вероятность повторения
+            presence_penalty=0.5,  # Поощряет новизну
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
@@ -66,6 +89,19 @@ def call_llm_for_qa(report_text: str, question: str, api_key: str, base_url: str
 def call_llm_to_determine_target(
         question: str, columns: List[str], api_key: str, base_url: str, model: str
 ) -> str:
+    """
+    Вызывает LLM для определения таргета на основе вопроса.
+
+    Args:
+        question: Вопрос пользователя.
+        columns: Список колонок датасета.
+        api_key: API ключ.
+        base_url: Базовый URL.
+        model: Модель для использования.
+
+    Returns:
+        Предполагаемый таргет.
+    """
     if not OPENAI_AVAILABLE:
         return columns[0] if columns else ""
 
@@ -114,6 +150,20 @@ def run_analysis(
         model: str,
         question_for_target: str,
 ) -> Tuple[str, str, str, str, str]:
+    """
+    Запускает анализ датасета.
+
+    Args:
+        file_obj: Объект файла Gradio.
+        api_key: API ключ.
+        base_url: Базовый URL.
+        model: Модель.
+        question_for_target: Вопрос для определения таргета.
+
+    Returns:
+        Кортеж: (статус, путь_к_отчету_md, HTML_отчет_для_отображения,
+        текст_отчета, история)
+    """
     if not file_obj:
         return "❌ Файл не загружен.", "", "", "", ""
 
@@ -159,7 +209,9 @@ def run_analysis(
             tmp_path = tmpfile.name
 
         original_filename = os.path.basename(file_obj.name)
-        report_path, history, report_text = analyze_dataset(tmp_path, target_col, original_filename)
+        report_path, history, report_text = analyze_dataset(
+            tmp_path, target_col, original_filename
+        )
         logger.info("✅ Анализ завершен.")
 
         os.unlink(tmp_path)
@@ -181,8 +233,25 @@ def run_analysis(
 
 
 def answer_question(
-        question: str, report_text: str, api_key: str, base_url: str, model: str
+        question: str,
+        report_text: str,
+        api_key: str,
+        base_url: str,
+        model: str
 ) -> str:
+    """
+    Отвечает на вопрос по отчету.
+
+    Args:
+        question: Вопрос пользователя.
+        report_text: Текст отчета.
+        api_key: API ключ.
+        base_url: Базовый URL.
+        model: Модель для использования.
+
+    Returns:
+        Ответ на вопрос.
+    """
     if not question:
         return "Пожалуйста, введите вопрос."
     if not report_text:
@@ -195,6 +264,15 @@ def answer_question(
 
 
 def create_zip_with_images(report_text: str) -> Optional[str]:
+    """
+    Создает ZIP архив с изображениями из отчета.
+
+    Args:
+        report_text: Текст отчета.
+
+    Returns:
+        Путь к созданному ZIP-файлу или None.
+    """
     if not report_text:
         return None
 
@@ -240,6 +318,16 @@ def create_zip_with_images(report_text: str) -> Optional[str]:
 
 
 def fetch_models(api_key: str, base_url: str):
+    """
+    Получает список моделей от API.
+
+    Args:
+        api_key: API ключ.
+        base_url: Базовый URL.
+
+    Returns:
+        Обновление для Dropdown с моделями.
+    """
     if not api_key or not base_url:
         return gr.update(choices=[], value="", interactive=True)
     try:
@@ -257,6 +345,17 @@ def fetch_models(api_key: str, base_url: str):
 
 
 def save_api_settings(api_key: str, base_url: str, model: str) -> str:
+    """
+    Сохраняет настройки API в .env файл.
+
+    Args:
+        api_key: API ключ.
+        base_url: Базовый URL.
+        model: Модель.
+
+    Returns:
+        Сообщение о результате сохранения.
+    """
     try:
         with open(".env", "w", encoding="utf-8") as f:
             f.write(f"OPENAI_API_KEY={api_key}\n")
@@ -275,6 +374,15 @@ def save_api_settings(api_key: str, base_url: str, model: str) -> str:
 
 
 def save_html_report(html_content: str) -> str:
+    """
+    Сохраняет HTML отчет во временный файл.
+
+    Args:
+        html_content: Содержимое HTML отчета.
+
+    Returns:
+        Путь к сохраненному файлу.
+    """
     if not html_content:
         return ""
     try:
@@ -287,6 +395,7 @@ def save_html_report(html_content: str) -> str:
 
 
 def build_interface():
+    """Создает Gradio интерфейс."""
     with gr.Blocks(title="InsightFinder", theme=gr.themes.Soft()) as demo:
         
         # --- Заголовок с логотипом справа ---
@@ -310,6 +419,7 @@ def build_interface():
                     show_download_button=False # Без кнопки скачивания
                 )
 
+        # Состояния
         report_text_state = gr.State("")
         history_state = gr.State("")
         report_html_state = gr.State("")
@@ -332,7 +442,7 @@ def build_interface():
                             label="OPENAI_BASE_URL",
                             value=os.getenv(
                                 "OPENAI_BASE_URL",
-                                "https://openai-hub.neuraldeep.tech"
+                                "https://openai-hub.neuraldeep.tech  "
                             ).strip(),
                         )
 
@@ -413,6 +523,7 @@ def build_interface():
                             label="Ответ", interactive=False, lines=5
                         )
 
+        # Обработчики событий
         fetch_models_btn.click(
             fetch_models,
             inputs=[api_key_input, base_url_input],
@@ -465,6 +576,7 @@ def build_interface():
                 html_file_path if html_file_path and os.path.exists(html_file_path) else None,
                 gr.update(visible=download_visible),
                 gr.update(visible=qa_visible),
+                report_html,
                 report_text,
                 history,
             )
@@ -509,12 +621,3 @@ def build_interface():
         )
 
     return demo
-
-
-if __name__ == "__main__":
-    Path("tmp").mkdir(exist_ok=True)
-    Path("logs").mkdir(exist_ok=True)
-    Path("report/output/images").mkdir(parents=True, exist_ok=True)
-
-    demo = build_interface()
-    demo.launch(server_name="0.0.0.0", server_port=8502)
