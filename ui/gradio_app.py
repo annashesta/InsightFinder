@@ -169,7 +169,7 @@ def run_analysis(
         logger.info("✅ Отчет преобразован в HTML.")
 
         return (
-            "✅ Анализ завершен!",
+            "Анализ завершен!",
             report_path,
             report_html,
             report_text,

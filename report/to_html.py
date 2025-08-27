@@ -297,8 +297,10 @@ def markdown_to_html_with_images(
         border: 1px solid #d1d5da;
         border-radius: 6px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        /* Уменьшние размера изображений на 20% */
+        transform: scale(0.8); /* Это уменьшит размер на 20% */
     }}
-    
+
     /* Подписи к изображениям */
     #insightfinder-report-container figure {{
         margin: 1.5em 0;
