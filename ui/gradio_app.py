@@ -406,8 +406,8 @@ def save_api_settings(api_key: str, base_url: str, model: str) -> str:
         os.environ["OPENAI_BASE_URL"] = base_url
         os.environ["OPENAI_MODEL"] = model
 
-        logger.info("✅ Настройки API сохранены в .env")
-        return "✅ Настройки API успешно сохранены!"
+        logger.info("Настройки API сохранены в .env")
+        return "Настройки API успешно сохранены!"
     except Exception as e:
         logger.error(f"Ошибка сохранения настроек API: {e}")
         return f"❌ Ошибка сохранения настроек: {str(e)}"
