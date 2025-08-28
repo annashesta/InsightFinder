@@ -12,3 +12,6 @@ __pycache__/
 .vscode
 .env
 logs/
+/report/output
+*.log
+*.png

@@ -7,6 +7,7 @@ import os
 import io
 import zipfile
 import re
+import time
 import base64
 import tempfile
 from pathlib import Path
@@ -255,7 +256,7 @@ def answer_question(question: str, report_text: str, api_key: str, base_url: str
 
 def create_zip_with_images(report_text: str) -> Optional[str]:
     """
-    Создает ZIP архив с изображениями из отчета.
+    Создает ZIP архив с изображениями из отчета и сохраняет его с читаемым именем.
 
     Args:
         report_text: Текст отчета.
@@ -273,13 +274,23 @@ def create_zip_with_images(report_text: str) -> Optional[str]:
         if not image_paths:
             return None
 
-        zip_buffer = io.BytesIO()
-        with zipfile.ZipFile(zip_buffer, "w") as zip_file:
+        # Убедимся, что директория tmp существует
+        tmp_dir = "tmp"
+        os.makedirs(tmp_dir, exist_ok=True)
+        
+        # Генерируем имя файла с временной меткой
+        timestamp = int(time.time())
+        zip_filename = f"images_{timestamp}.zip"
+        zip_file_path = os.path.join(tmp_dir, zip_filename)
+
+        # Создаем ZIP-файл вручную
+        with zipfile.ZipFile(zip_file_path, "w") as zip_file:
             base_images_dir = Path("report/output/images")
             added_files = set()
 
             for img_path_str in image_paths:
                 clean_path_str = img_path_str
+                # ... (логика очистки пути такая же) ...
                 if clean_path_str.startswith("images/"):
                     clean_path_str = clean_path_str[len("images/"):]
                 elif clean_path_str.startswith("report/output/images/"):
@@ -295,15 +306,54 @@ def create_zip_with_images(report_text: str) -> Optional[str]:
                     zip_file.write(img_full_path, arcname)
                     added_files.add(img_full_path)
 
-        zip_buffer.seek(0)
-
-        with tempfile.NamedTemporaryFile(
-                delete=False, suffix=".zip"
-        ) as tmp_zip:
-            tmp_zip.write(zip_buffer.getvalue())
-            return tmp_zip.name
+        logger.info(f"Архив изображений создан: {zip_file_path}")
+        return zip_file_path
     except Exception as e:
         logger.error(f"Ошибка создания ZIP с изображениями: {e}")
+        return None
+
+
+def create_logs_zip() -> Optional[str]:
+    """
+    Создает ZIP архив со всеми .log файлами из папки logs и сохраняет его с читаемым именем.
+
+    Returns:
+        Путь к временному ZIP-файлу или None в случае ошибки.
+    """
+    logs_dir = Path("logs")
+    if not logs_dir.exists():
+        logger.warning("Папка logs не найдена для создания архива.")
+        return None
+
+    log_files = list(logs_dir.glob("*.log"))
+    if not log_files:
+         logger.info("Нет .log файлов для архивации.")
+         return None
+
+    try:
+        # Убедимся, что директория tmp существует
+        tmp_dir = "tmp"
+        os.makedirs(tmp_dir, exist_ok=True)
+        
+        # Генерируем имя файла с временной меткой
+        timestamp = int(time.time())
+        zip_filename = f"logs_{timestamp}.zip"
+        zip_file_path = os.path.join(tmp_dir, zip_filename)
+
+        # Создаем ZIP-файл вручную
+        with zipfile.ZipFile(zip_file_path, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            for log_file in log_files:
+                if log_file.is_file():
+                    try:
+                        zip_file.write(log_file, log_file.name)
+                        logger.debug(f"Добавлен файл в архив логов: {log_file.name}")
+                    except OSError as e:
+                        logger.error(f"Не удалось добавить файл {log_file} в ZIP архив логов: {e}")
+
+        logger.info(f"Архив логов создан: {zip_file_path}")
+        return zip_file_path
+    except Exception as e:
+        logger.error(f"Ошибка при создании ZIP архива логов: {e}")
         return None
 
 
@@ -365,7 +415,7 @@ def save_api_settings(api_key: str, base_url: str, model: str) -> str:
 
 def save_html_report(html_content: str) -> str:
     """
-    Сохраняет HTML отчет во временный файл.
+    Сохраняет HTML отчет во временный файл с читаемым именем.
 
     Args:
         html_content: Содержимое HTML отчета.
@@ -376,9 +426,21 @@ def save_html_report(html_content: str) -> str:
     if not html_content:
         return ""
     try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".html", mode='w', encoding='utf-8') as f:
+        # Убедимся, что директория tmp существует
+        tmp_dir = "tmp"
+        os.makedirs(tmp_dir, exist_ok=True)
+        
+        # Генерируем имя файла с временной меткой
+        timestamp = int(time.time())
+        filename = f"report_{timestamp}.html"
+        file_path = os.path.join(tmp_dir, filename)
+        
+        # Открываем файл вручную и записываем содержимое
+        with open(file_path, 'w', encoding='utf-8') as f:
             f.write(html_content)
-            return f.name
+            
+        logger.info(f"HTML отчет сохранен: {file_path}")
+        return file_path
     except Exception as e:
         logger.error(f"Ошибка сохранения HTML отчета: {e}")
         return ""
@@ -500,6 +562,7 @@ def build_interface():
                             label="📥 Скачать графики (.zip)"
                         )
                         report_html_download = gr.File(label="📥 Скачать отчёт (.html)")
+                        logs_download = gr.File(label="📥 Скачать логи (.zip)")
 
                     with gr.Group(visible=False) as qa_section:
                         gr.Markdown("### Задать вопрос по отчету")
@@ -551,9 +614,10 @@ def build_interface():
 
             zip_path = create_zip_with_images(report_text)
             html_file_path = save_html_report(report_html)
+            logs_zip_path = create_logs_zip()
 
             report_visible = bool(report_html)
-            download_visible = bool(report_path or zip_path or html_file_path)
+            download_visible = bool(report_path or zip_path or html_file_path or logs_zip_path)
             qa_visible = bool(report_text)
 
             return (
@@ -564,6 +628,7 @@ def build_interface():
                     report_path) else None,
                 zip_path if zip_path and os.path.exists(zip_path) else None,
                 html_file_path if html_file_path and os.path.exists(html_file_path) else None,
+                logs_zip_path if logs_zip_path and os.path.exists(logs_zip_path) else None,
                 gr.update(visible=download_visible),
                 gr.update(visible=qa_visible),
                 report_html,
@@ -587,6 +652,7 @@ def build_interface():
                 report_download,
                 images_zip_download,
                 report_html_download,
+                logs_download,   
                 download_row,
                 qa_section,
                 report_html_state,

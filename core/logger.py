@@ -27,7 +27,7 @@ file_handler_exists = any(
 
 if not file_handler_exists:
     # Создаем и добавляем файловый обработчик к корневому логгеру
-    file_handler = logging.FileHandler(log_file_path, mode='a', encoding='utf-8')
+    file_handler = logging.FileHandler(log_file_path, mode='w', encoding='utf-8')
     file_handler.setFormatter(formatter)
     root_logger.addHandler(file_handler)
     print(f"Логирование в файл настроено: {log_file_path}")
