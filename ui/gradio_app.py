@@ -60,7 +60,7 @@ def call_llm_for_qa(
         return "❌ Необходимо заполнить все параметры API (ключ, URL, модель)."
 
     try:
-        client = OpenAI(api_key=api_key, base_url=base_url + "/v1")
+        client = OpenAI(api_key=api_key, base_url=base_url.rstrip('/') + "/v1") 
         prompt = f"""
 Отчет:
 {report_text}
@@ -75,7 +75,7 @@ def call_llm_for_qa(
             model=model,
             messages=[{"role": "user", "content": prompt}],
             temperature=0,
-            max_tokens=512,  # иначе gradio обрезает вывод
+            max_tokens=1024,
             top_p=0.9,  # Ограничиваем разнообразие
             frequency_penalty=0.5,  # Снижает вероятность повторения
             presence_penalty=0.5,  # Поощряет новизну
@@ -143,12 +143,7 @@ def call_llm_to_determine_target(
         return columns[0] if columns else ""
 
 
-def run_analysis(
-        file_obj,
-        api_key: str,
-        base_url: str,
-        model: str,
-        question_for_target: str,
+def run_analysis(file_obj, api_key: str, base_url: str, model: str, question_for_target: str,
 ) -> Tuple[str, str, str, str, str]:
     """
     Запускает анализ датасета.
@@ -232,12 +227,7 @@ def run_analysis(
         return f"❌ Ошибка: {str(e)}", "", "", "", ""
 
 
-def answer_question(
-        question: str,
-        report_text: str,
-        api_key: str,
-        base_url: str,
-        model: str
+def answer_question(question: str, report_text: str, api_key: str, base_url: str, model: str
 ) -> str:
     """
     Отвечает на вопрос по отчету.
@@ -599,6 +589,7 @@ def build_interface():
                 report_html_download,
                 download_row,
                 qa_section,
+                report_html_state,
                 report_text_state,
                 history_state,
             ],
