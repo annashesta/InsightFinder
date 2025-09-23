@@ -15,3 +15,5 @@ logs/
 /report/output
 *.log
 *.png
+tmp
+logs
