@@ -267,3 +267,4 @@ websockets==15.0.1
     # via gradio-client
 zstandard==0.24.0
     # via langsmith
+markdown-it-py>=3.0.0
