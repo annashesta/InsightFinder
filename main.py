@@ -1,5 +1,6 @@
+# main.py
 """
-Точка входа в систему InsightFinder.Используя Gradio.
+Точка входа в систему InsightFinder. Используя Gradio.
 Мультиагентная система на LangChain для автоматического EDA.
 """
 

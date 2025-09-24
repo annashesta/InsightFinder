@@ -1,0 +1,14 @@
+version: "3.9"
+
+services:
+  insightfinder:
+    build: .
+    container_name: insightfinder_app
+    ports:
+      - "8502:8502"
+    volumes:
+      - ./logs:/app/logs
+      - ./report/output:/app/report/output
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
